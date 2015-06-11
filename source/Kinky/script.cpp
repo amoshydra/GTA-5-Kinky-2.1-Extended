@@ -1,4 +1,6 @@
 /*
+	-- By the original Author --
+
 	Dear Reader,
 
 	I know you are probably pretty happy to have your hands on a simple peice of work.
@@ -17,15 +19,35 @@
 
 	Love you all <3
 	Femboy
-	*/
+
+	-- By myself, amoshydra --
+	08 June 2015
+	Additonal features and coding is made by amoshydra.
+	Check CHANGELOG.log.
+
+*/
 
 #include <string>
 #include <ctime>
+#include <fstream>
 #include "script.h"
 #include "onlinebypass.h"
 
 #pragma warning(disable : 4244 4305) // double <-> float conversions
 int valuef;
+
+/*********************
+	File I/O Stream
+*********************/
+
+void output_writeToLog(std::string message) {
+	ofstream logfile;
+	logfile.open("kinky2.log", std::ios_base::app);
+	logfile << message + "\n";
+	logfile.close();
+	return;
+}
+
 
 /******************
 	UI Drawing
@@ -252,7 +274,7 @@ DWORD featureWeaponVehShootLastTime				=	0;
 bool featureVehInvincible						=	false;
 bool featureVehInvincibleUpdated				=	false;
 bool featureVehSpeedBoost						=	false;
-bool featureVehWrapInSpawned					=	false;
+bool featureVehWrapInSpawned					=	true;
 bool featureVehRainbow							=	false;
 bool featureVehStickyCar						=	false;
 bool featureVehSlide							=	false;
@@ -480,7 +502,7 @@ static LPCSTR weaponOnlineNames[] = {
 
 static LPCSTR weaponRestrictedNames[] = {
 	"WEAPON_STUNGUN",
-	"WEAPON_BZGAS", "WEAPON_SNOWBALL", "WEAPON_FIREEXTINGUISHER",
+	"WEAPON_BZGAS", "WEAPON_SNOWBALL", "WEAPON_FIREEXTINGUISHER", "WEAPON_BALL", "WEAPON_FLARE",
 	"WEAPON_MUSKET", "WEAPON_GUSENBERG",
 	"WEAPON_RAILGUN", "WEAPON_FIREWORK",
 	"WEAPON_HANDCUFFS"
@@ -500,35 +522,71 @@ void teleport_to_nearest_vehicle(){
 	PED::SET_PED_INTO_VEHICLE(playerPed, VehicleHandle, -1);
 };
 
-// Remove this after use
-bool debug_ped_in_veh = false;
+bool bMonitorPlayerRespawn = false;
 
-void change_player_model(Ped playerPed, Hash model, bool bRestore = false, bool bGiveWeapon = true){
+bool is_ped_default_player(Hash model){
+	for (int i = 0; i < 3; i++) {
+		if (GAMEPLAY::GET_HASH_KEY((char *)defaultModels[i]) == model) {
+			return true;
+		}
+	}
+	return false;
+}
+bool is_ped_default_player(Ped playerPed){
+	return is_ped_default_player(ENTITY::GET_ENTITY_MODEL(playerPed));
+}
+
+void change_player_model(Ped playerPed, Hash model, bool bRestore = false, bool bGiveWeapon = true){	
+	
+	// Common variables
 	Ped playerPed_new;
-	int isInVehicle = PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0);
-	
+	bool isInVehicle = false;
 	Vehicle drivingVeh;
-	if (isInVehicle)
-		drivingVeh = PED::GET_VEHICLE_PED_IS_USING(playerPed);
-	
+
+	// Vehicle check
+	if (!bRestore) {
+		bMonitorPlayerRespawn = !is_ped_default_player(model);
+			
+		if (PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 0)) {
+			isInVehicle = true;
+			drivingVeh = PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID());
+		}
+	}
+
 	// Check for validity
-	if (bRestore ||	// Skip validation if restoration is used.
-		(STREAMING::IS_MODEL_IN_CDIMAGE(model) && STREAMING::IS_MODEL_VALID(model))) {
+	if ((STREAMING::IS_MODEL_IN_CDIMAGE(model) && STREAMING::IS_MODEL_VALID(model))) {
 
 		// Change model
 		STREAMING::REQUEST_MODEL(model);
 		while (!STREAMING::HAS_MODEL_LOADED(model))
 			WAIT(0);
-		PLAYER::SET_PLAYER_MODEL(playerPed, model);
+		
+		output_writeToLog("change_player_model: " + std::to_string(model) + " is loaded.");
+		
+		PLAYER::SET_PLAYER_MODEL(PLAYER::PLAYER_ID(), model);
+
+		output_writeToLog("change_player_model: Player model is changed.");
 
 		playerPed_new = PLAYER::PLAYER_PED_ID();
 
 		PED::SET_PED_DEFAULT_COMPONENT_VARIATION(playerPed_new);
-
-		if (!bRestore) { // Randomise ped component
-			WAIT(0);
-			for (int i = 0; i < 12; i++) {
-				for (int j = 0; j < 100; j++) {
+		WAIT(100);
+		STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);
+		
+		if (!bRestore) {
+			if (isInVehicle) {
+				PED::SET_PED_INTO_VEHICLE(playerPed_new, drivingVeh, -1);
+				ENTITY::SET_ENTITY_COLLISION(PLAYER::PLAYER_PED_ID(), 1, 0);
+				output_writeToLog("change_player_model: Teleport to vehicle works!");
+			}
+			
+			// Randomise ped component
+			for (int i = 3; i < 12; i++) {
+				if (i == 7) { // skip 7 to 10
+					i = 10;
+					continue;
+				}
+				for (int j = 0; j < 100; j++) {				
 					int drawable = rand() % 10;
 					int texture = rand() % 10;
 					if (PED::IS_PED_COMPONENT_VARIATION_VALID(playerPed_new, i, drawable, texture)) {
@@ -537,55 +595,57 @@ void change_player_model(Ped playerPed, Hash model, bool bRestore = false, bool 
 					}
 				}
 			}
-			WAIT(100);
 		}
-		else {
-			if (isInVehicle) {
-				WAIT(1500);
-				PED::SET_PED_INTO_VEHICLE(playerPed_new, drivingVeh, -1);
-				teleport_to_nearest_vehicle();
-			}
-		}
-		STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);
-		
 		if (bGiveWeapon)
-			give_weapons_set_to_ped(playerPed_new, weaponOnlineNames, sizeof(weaponOnlineNames), 6000);
+			give_weapons_set_to_ped(playerPed_new, weaponOnlineNames, sizeof(weaponOnlineNames), 9000);
+
 	}
+	else
+		output_writeToLog("ERROR change_player_model: " + std::to_string(model) + " doesn't exist.");
 
 }
 void change_player_model(Ped playerPed, char *modelName, bool bRestore = false) {
-	Hash model = GAMEPLAY::GET_HASH_KEY(modelName);
-	change_player_model(playerPed, model, bRestore);
+	change_player_model(playerPed, GAMEPLAY::GET_HASH_KEY(modelName), bRestore);
 }
 
-void player_dead_check() {
+void player_respawn_check() {
 	// common variables
 	//Player player = PLAYER::PLAYER_ID();
 
-	if (!ENTITY::DOES_ENTITY_EXIST(PLAYER::PLAYER_PED_ID())) return;
+	// common variable
+	Ped pedChecking = PLAYER::PLAYER_PED_ID();
 
-	if (ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID()) || PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), true)) {
+	if (!ENTITY::DOES_ENTITY_EXIST(pedChecking)) return;
 
-		Hash model_pre = ENTITY::GET_ENTITY_MODEL(PLAYER::PLAYER_PED_ID());
-		display_message_notify("Previous model loaded");
+	if (ENTITY::IS_ENTITY_DEAD(pedChecking) ||
+		PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), true)) {
+		output_writeToLog("player_respawn_check: Player is dead or arrested");
+
+		Hash model_pre = ENTITY::GET_ENTITY_MODEL(pedChecking);
+		
 		if (!NETWORK::NETWORK_IS_IN_SESSION()) { // Singleplayer
 			
-			bool bNeedToRestoreSkin = true;
-			for (int i = 0; i < 3; i++) {
-				if (GAMEPLAY::GET_HASH_KEY((char *)defaultModels[i]) == model_pre) {
-					bNeedToRestoreSkin = false;
-					break;
-				}
+			bool isDefaultPlayer = is_ped_default_player(model_pre);
+
+			if (isDefaultPlayer) {
+				// wait until loading screen is over.
+				while (ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID()) ||
+					PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), true))
+					WAIT(0);
+				return;
 			}
-			if (bNeedToRestoreSkin)	{
-				WAIT(500);
-				change_player_model(PLAYER::PLAYER_PED_ID(), "player_zero", true);
-				ENTITY::SET_ENTITY_VISIBLE(PLAYER::PLAYER_PED_ID(), false);
+			else {
+				// change ped back to default player.
+				output_writeToLog("player_respawn_check: Not default player, restoration required.");
+
+				WAIT(2000);
+				change_player_model(pedChecking, "player_zero", true);
 
 				// wait until player is ressurected
+				output_writeToLog("player_respawn_check: Ressurecting.");
 				while (CAM::IS_GAMEPLAY_CAM_RENDERING())
 					WAIT(0); //Dying screen
-
+				
 				while (!CAM::IS_GAMEPLAY_CAM_RENDERING())
 					WAIT(0); //Resurrecting
 			}
@@ -595,17 +655,9 @@ void player_dead_check() {
 
 		// Change back
 		change_player_model(PLAYER::PLAYER_PED_ID(), model_pre);
-		ENTITY::SET_ENTITY_VISIBLE(PLAYER::PLAYER_PED_ID(), !featurePlayerInvisible);
+		output_writeToLog("player_respawn_check: model_pre is changed back");
 	}
 }
-
-/* TODO
-1. Fix weapon
-2. Figure out deadtime
-3. Add collision toggle
-4. Add more trigger
-
-*/
 
 void update_vehicle_guns()
 {
@@ -648,8 +700,6 @@ void update_vehicle_guns()
 	}
 }
 
-bool skinchanger_used = false;
-
 // Updates all features that can be turned off by the game, being called each game frame
 void update_features()
 {
@@ -658,8 +708,8 @@ void update_features()
 	update_vehicle_guns();
 
 	// changing player model if died while being an animal, since it can cause inf loading loop
-	if (skinchanger_used)
-		player_dead_check();
+	if (bMonitorPlayerRespawn)
+		player_respawn_check();
 
 	// read default feature values from the game
 	featureWorldRandomCops = PED::CAN_CREATE_RANDOM_COPS() == TRUE;
@@ -1231,11 +1281,6 @@ void menu_home_animation_dances__action(int *ptr_active_line) {
 
 	int active_line = *ptr_active_line;
 
-	// common variables
-	BOOL bPlayerExists = ENTITY::DOES_ENTITY_EXIST(PLAYER::PLAYER_PED_ID());
-	Player player = PLAYER::PLAYER_ID();
-	Ped playerPed = PLAYER::PLAYER_PED_ID();
-
 	switch (active_line) {
 	case 0:
 		Animation_Stop();
@@ -1329,11 +1374,6 @@ void menu_home_animation__action(int *ptr_active_line) {
 
 	int active_line = *ptr_active_line;
 
-	// common variables
-	BOOL bPlayerExists = ENTITY::DOES_ENTITY_EXIST(PLAYER::PLAYER_PED_ID());
-	Player player = PLAYER::PLAYER_ID();
-	Ped playerPed = PLAYER::PLAYER_PED_ID();
-
 	switch (active_line) {
 		case 0:
 			Animation_Stop();
@@ -1385,10 +1425,14 @@ void menu_home_animation__action(int *ptr_active_line) {
 			menu_home_animation_exercises__display("Exercises");
 			break;
 		default:
-			if (!gender.compare("male")) //If gender equals male
+			if (!gender.compare("male")) { //If gender equals male
 				gender = "female";
-			else
+				display_message_caption("Play animation as female");
+			}
+			else {
 				gender = "male";
+				display_message_caption("Play animation as male");
+			}
 	}
 }
 void menu_home_animation__display(std::string caption) {
@@ -1504,11 +1548,11 @@ void menu_home_misc_debug__action(menuList_boolean menu_lines[], int *ptr_active
 			teleport_to_nearest_vehicle();
 			break;
 		case 5:
-			debug_ped_in_veh = !debug_ped_in_veh;
+			
 			break;
 		case 6:
 			debug_collision_control_x = !debug_collision_control_x;
-			ENTITY::SET_ENTITY_COLLISION(playerPed, debug_collision_control_x, debug_ped_in_veh);
+			ENTITY::SET_ENTITY_COLLISION(playerPed, debug_collision_control_x, 0);
 			break;
 		case 7:			
 			status = "Anim current time: " + std::to_string(ENTITY::GET_ENTITY_ANIM_CURRENT_TIME(playerPed, debug_anim_dictionary, debug_anim_clip)) + "\n" +
@@ -1539,7 +1583,7 @@ void menu_home_misc_debug__display(std::string caption) {
 		/*  2 */ { "Online Check", NULL, NULL },
 		/*  3 */ { "Vehicle check", NULL, NULL },
 		/*  4 */ { "Teleport to vehicle", NULL, NULL },
-		/*  5 */ { "Toggle model veh", &debug_ped_in_veh, NULL },
+		/*  5 */ { "NULL", NULL, NULL },
 		/*  6 */ { "Toggle collision", &debug_collision_control_x, NULL },
 		/*  7 */ { "Debug animation", NULL, NULL },
 		/*  8 */ { "Play animation", NULL, NULL },
@@ -2861,7 +2905,6 @@ void  menu_home_player_skinchanger__display() {
 			play_sound("SELECT");
 			change_player_model(PLAYER::PLAYER_ID(), 
 				GAMEPLAY::GET_HASH_KEY((char *)pedModels[active_home_player_skinchangerLine][active_home_player_skinchangerItem]));
-			skinchanger_used = true;
 			waitTime = 200;
 		}
 		else {
@@ -3180,7 +3223,6 @@ void reset_globals()
 		featureVehInvincible =
 		featureVehInvincibleUpdated =
 		featureVehSpeedBoost =
-		featureVehWrapInSpawned =
 		featureWorldMoonGravity =
 		featureTimePaused =
 		featureTimePausedUpdated =
@@ -3197,13 +3239,15 @@ void reset_globals()
 		featurePlayerInvisible =
 		featureWorldGarbageTrucks = false;
 
-		featureMiscMobileRadio = false;
+	featureMiscMobileRadio = 
+		bMonitorPlayerRespawn = false;
 
-		skinchanger_used = false;
+	featureVehWrapInSpawned = true;
 }
 
 void main()
 {
+	output_writeToLog("ASI Running");
 	bypass_online();
 	reset_globals();
 

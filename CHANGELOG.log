@@ -1,0 +1,24 @@
+.LOG
+11:40 PM 11/6/2015
+Bugs fix
+- Rewrittem structure of codes to facilitate code reuse.
+- Exiting user input for car plate no longer crash the game.
+- Title on user input now display correctly.
+- Change weather now works Online.
+- Menu navigation now sounds correctly for different keys.
+- Mobile radio is working now.
+
+Changes
+- Menu is reorganised.
+- Wrap to newly spawned vehicle is set to be ON by default.
+- Most message is now displayed using native function.
+
+New features
+- Added animations feature. 
+- Retain previously changed skin after dying or arrested.
+- Weapons is given to player whenever skin changer is used.
+- Changing skin in vehicle will keep player stay in the vehicle.
+- Added option to add only weapons available for GTA Online.
+- Added option to remove all weapons.
+- Added ability to teleport forward.
+- Added log file for debugging.
