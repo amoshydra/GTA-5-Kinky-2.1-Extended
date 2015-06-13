@@ -30,6 +30,7 @@
 #include <string>
 #include <ctime>
 #include <fstream>
+#include <vector>
 #include "script.h"
 #include "onlinebypass.h"
 
@@ -40,96 +41,31 @@ int valuef;
 	File I/O Stream
 *********************/
 
-void output_writeToLog(std::string message) {
-	ofstream logfile;
-	logfile.open("kinky2.log", std::ios_base::app);
-	logfile << message + "\n";
-	logfile.close();
+void output_writeToLog(std::string message, bool bAppend = true) {
+	if (false){
+		ofstream logfile;
+		char* filename = "kinky2.log";
+		if (bAppend)
+			logfile.open(filename, std::ios_base::app);
+		else
+			logfile.open(filename);
+		logfile << message + "\n";
+		logfile.close();
+	}
 	return;
 }
 
+void debug_log_cam_status() {
+	std::string message = 
+		"////////////////////"
+		"GP Cam: " + std::to_string(CAM::IS_GAMEPLAY_CAM_RENDERING()) + "\n" +
+		"Faded in: " + std::to_string(CAM::IS_SCREEN_FADED_IN()) + "\n" +
+		"Fading in: " + std::to_string(CAM::IS_SCREEN_FADING_IN()) + "\n" +
+		"Faded out: " + std::to_string(CAM::IS_SCREEN_FADED_OUT()) + "\n" +
+		"Fading out: " + std::to_string(CAM::IS_SCREEN_FADING_OUT()) + "\n" +
+		"Aim cam: " + std::to_string(CAM::IS_AIM_CAM_ACTIVE());
 
-/******************
-	UI Drawing
-******************/
-
-void draw_rect(float A_0, float A_1, float A_2, float A_3, int A_4, int A_5, int A_6, int A_7) {
-	GRAPHICS::DRAW_RECT((A_0 + (A_2 * 0.5f)), (A_1 + (A_3 * 0.5f)), A_2, A_3, A_4, A_5, A_6, A_7);
-}
-
-void draw_menu_line(std::string caption, float lineWidth, float lineHeight, float lineTop, float lineLeft, float textLeft, bool active, bool title, bool rescaleText = true)
-{
-	// default values
-	int text_col[4] = { 255, 255, 255, 255 },
-		rect_col[4] = { 0, 0, 0, 140 };
-	float text_scale = 0.50;
-	int font = 4;
-
-	// correcting values for active line
-	if (active) {
-		text_col[0] = 243;
-		text_col[1] = 23;
-		text_col[2] = 84;
-
-		rect_col[0] = 0;
-		rect_col[1] = 0;
-		rect_col[2] = 0;
-		rect_col[3] = 140;
-
-		if (rescaleText) text_scale = 0.50;
-	}
-
-	if (title) {
-		rect_col[0] = 243;
-		rect_col[1] = 23;
-		rect_col[2] = 84;
-		rect_col[3] = 140;
-
-		if (rescaleText) text_scale = 0.50;
-		font = 1;
-	}
-
-	int screen_w, screen_h;
-	GRAPHICS::GET_SCREEN_RESOLUTION(&screen_w, &screen_h);
-
-	textLeft += lineLeft;
-
-	float lineWidthScaled = lineWidth / (float)screen_w; // line width
-	float lineTopScaled = lineTop / (float)screen_h; // line top offset
-
-	float lineHeightScaled = lineHeight / (float)screen_h; // line height
-	float lineLeftScaled = lineLeft / (float)screen_w;
-
-	float textLeftScaled = textLeft / (float)screen_w; // text left offset
-
-	// this is how it's done in original scripts
-
-	// text upper part
-	UI::SET_TEXT_FONT(font);
-	UI::SET_TEXT_SCALE(0.0, text_scale);
-	UI::SET_TEXT_COLOUR(text_col[0], text_col[1], text_col[2], text_col[3]);
-	UI::SET_TEXT_CENTRE(0);
-	UI::SET_TEXT_DROPSHADOW(0, 0, 0, 0, 0);
-	UI::SET_TEXT_EDGE(0, 0, 0, 0, 0);
-	UI::_SET_TEXT_ENTRY("STRING");
-	UI::_ADD_TEXT_COMPONENT_STRING((LPSTR)caption.c_str());
-	UI::_DRAW_TEXT(textLeftScaled, (((lineTopScaled + 0.00278f) + lineHeightScaled) - 0.005f));
-
-	// text lower part
-	UI::SET_TEXT_FONT(font);
-	UI::SET_TEXT_SCALE(0.0, text_scale);
-	UI::SET_TEXT_COLOUR(text_col[0], text_col[1], text_col[2], text_col[3]);
-	UI::SET_TEXT_CENTRE(0);
-	UI::SET_TEXT_DROPSHADOW(0, 0, 0, 0, 0);
-	UI::SET_TEXT_EDGE(0, 0, 0, 0, 0);
-	UI::_SET_TEXT_GXT_ENTRY("STRING");
-	UI::_ADD_TEXT_COMPONENT_STRING((LPSTR)caption.c_str());
-	int num25 = UI::_0x9040DFB09BE75706(textLeftScaled, (((lineTopScaled + 0.00278f) + lineHeightScaled) - 0.005f));
-
-	// rect
-	draw_rect(lineLeftScaled, lineTopScaled + (0.00278f),
-		lineWidthScaled, ((((float)(num25)* UI::_0xDB88A37483346780(text_scale, 0)) + (lineHeightScaled * 1.5f)) + 0.004f),
-		rect_col[0], rect_col[1], rect_col[2], rect_col[3]);
+	output_writeToLog(message);
 }
 
 /**********************
@@ -186,11 +122,9 @@ void play_sound(char soundFile[15] = "SELECT") {
 
 	AUDIO::PLAY_SOUND_FRONTEND(-1, soundFile, "HUD_FRONTEND_DEFAULT_SOUNDSET", 0);
 }
-
 void play_sound(char soundFile[50], char soundLibrary[50]) {
 	AUDIO::PLAY_SOUND_FRONTEND(-1, soundFile, soundLibrary, 0);
 }
-
 
 // Status Text //
 std::string statusText;
@@ -298,194 +232,322 @@ bool featureMiscMobileRadio						=	false;
 int rainbowCount								=	0;
 
 
-// player model control, switching on normal ped model when needed	
+std::vector< std::vector<LPCSTR> > pedModels_new = {
 
-static LPCSTR animalModels[] = { "a_c_boar", "a_c_chimp", "a_c_cow", "a_c_coyote", "a_c_deer", "a_c_fish", "a_c_hen", "a_c_cat_01", "a_c_chickenhawk",
-"a_c_cormorant", "a_c_crow", "a_c_dolphin", "a_c_humpback", "a_c_killerwhale", "a_c_pigeon", "a_c_seagull", "a_c_sharkhammer",
-"a_c_pig", "a_c_rat", "a_c_rhesus", "a_c_chop", "a_c_husky", "a_c_mtlion", "a_c_retriever", "a_c_sharktiger", "a_c_shepherd" };
+	// 0 Default
+	{ "_default", "mp_f_freemode_01", "mp_m_freemode_01", "player_zero", "player_one", "player_two" },
+	{ "Default", "Female (Online)", "Male (Online)", "Michael", "Franklin", "Trevor" },
 
-static LPCSTR defaultModels[] = { "player_zero", "player_one", "player_two" };
+	// 2 Creatures
+	{ "_creatures", 
+	"a_c_boar", "a_c_cat_01", "a_c_chimp", "a_c_chop", "a_c_cow", "a_c_coyote", "a_c_deer", "a_c_hen", "a_c_husky", "a_c_mtlion", 
+	"a_c_pig", "a_c_rat", "a_c_retriever", "a_c_rhesus", "a_c_shepherd",
+	"a_c_cormorant", "a_c_crow", "a_c_chickenhawk", "a_c_pigeon", 
+	"a_c_dolphin", "a_c_fish", "a_c_humpback", "a_c_seagull", "a_c_sharkhammer", "a_c_sharktiger", "a_c_killerwhale"},
 
-static LPCSTR pedModels[69][10] = {
-	{ "player_zero", "player_one", "player_two", "a_c_boar", "a_c_chimp", "a_c_cow", "a_c_coyote", "a_c_deer", "a_c_fish", "a_c_hen" },
-	{ "a_c_cat_01", "a_c_chickenhawk", "a_c_cormorant", "a_c_crow", "a_c_dolphin", "a_c_humpback", "a_c_killerwhale", "a_c_pigeon", "a_c_seagull", "a_c_sharkhammer" },
-	{ "a_c_pig", "a_c_rat", "a_c_rhesus", "a_c_chop", "a_c_husky", "a_c_mtlion", "a_c_retriever", "a_c_sharktiger", "a_c_shepherd", "s_m_m_movalien_01" },
-	{ "a_f_m_beach_01", "a_f_m_bevhills_01", "a_f_m_bevhills_02", "a_f_m_bodybuild_01", "a_f_m_business_02", "a_f_m_downtown_01", "a_f_m_eastsa_01", "a_f_m_eastsa_02", "a_f_m_fatbla_01", "a_f_m_fatcult_01" },
-	{ "a_f_m_fatwhite_01", "a_f_m_ktown_01", "a_f_m_ktown_02", "a_f_m_prolhost_01", "a_f_m_salton_01", "a_f_m_skidrow_01", "a_f_m_soucentmc_01", "a_f_m_soucent_01", "a_f_m_soucent_02", "a_f_m_tourist_01" },
-	{ "a_f_m_trampbeac_01", "a_f_m_tramp_01", "a_f_o_genstreet_01", "a_f_o_indian_01", "a_f_o_ktown_01", "a_f_o_salton_01", "a_f_o_soucent_01", "a_f_o_soucent_02", "a_f_y_beach_01", "a_f_y_bevhills_01" },
-	{ "a_f_y_bevhills_02", "a_f_y_bevhills_03", "a_f_y_bevhills_04", "a_f_y_business_01", "a_f_y_business_02", "a_f_y_business_03", "a_f_y_business_04", "a_f_y_eastsa_01", "a_f_y_eastsa_02", "a_f_y_eastsa_03" },
-	{ "a_f_y_epsilon_01", "a_f_y_fitness_01", "a_f_y_fitness_02", "a_f_y_genhot_01", "a_f_y_golfer_01", "a_f_y_hiker_01", "a_f_y_hippie_01", "a_f_y_hipster_01", "a_f_y_hipster_02", "a_f_y_hipster_03" },
-	{ "a_f_y_hipster_04", "a_f_y_indian_01", "a_f_y_juggalo_01", "a_f_y_runner_01", "a_f_y_rurmeth_01", "a_f_y_scdressy_01", "a_f_y_skater_01", "a_f_y_soucent_01", "a_f_y_soucent_02", "a_f_y_soucent_03" },
-	{ "a_f_y_tennis_01", "a_f_y_topless_01", "a_f_y_tourist_01", "a_f_y_tourist_02", "a_f_y_vinewood_01", "a_f_y_vinewood_02", "a_f_y_vinewood_03", "a_f_y_vinewood_04", "a_f_y_yoga_01", "a_m_m_acult_01" },
-	{ "a_m_m_afriamer_01", "a_m_m_beach_01", "a_m_m_beach_02", "a_m_m_bevhills_01", "a_m_m_bevhills_02", "a_m_m_business_01", "a_m_m_eastsa_01", "a_m_m_eastsa_02", "a_m_m_farmer_01", "a_m_m_fatlatin_01" },
-	{ "a_m_m_genfat_01", "a_m_m_genfat_02", "a_m_m_golfer_01", "a_m_m_hasjew_01", "a_m_m_hillbilly_01", "a_m_m_hillbilly_02", "a_m_m_indian_01", "a_m_m_ktown_01", "a_m_m_malibu_01", "a_m_m_mexcntry_01" },
-	{ "a_m_m_mexlabor_01", "a_m_m_og_boss_01", "a_m_m_paparazzi_01", "a_m_m_polynesian_01", "a_m_m_prolhost_01", "a_m_m_rurmeth_01", "a_m_m_salton_01", "a_m_m_salton_02", "a_m_m_salton_03", "a_m_m_salton_04" },
-	{ "a_m_m_skater_01", "a_m_m_skidrow_01", "a_m_m_socenlat_01", "a_m_m_soucent_01", "a_m_m_soucent_02", "a_m_m_soucent_03", "a_m_m_soucent_04", "a_m_m_stlat_02", "a_m_m_tennis_01", "a_m_m_tourist_01" },
-	{ "a_m_m_trampbeac_01", "a_m_m_tramp_01", "a_m_m_tranvest_01", "a_m_m_tranvest_02", "a_m_o_acult_01", "a_m_o_acult_02", "a_m_o_beach_01", "a_m_o_genstreet_01", "a_m_o_ktown_01", "a_m_o_salton_01" },
-	{ "a_m_o_soucent_01", "a_m_o_soucent_02", "a_m_o_soucent_03", "a_m_o_tramp_01", "a_m_y_acult_01", "a_m_y_acult_02", "a_m_y_beachvesp_01", "a_m_y_beachvesp_02", "a_m_y_beach_01", "a_m_y_beach_02" },
-	{ "a_m_y_beach_03", "a_m_y_bevhills_01", "a_m_y_bevhills_02", "a_m_y_breakdance_01", "a_m_y_busicas_01", "a_m_y_business_01", "a_m_y_business_02", "a_m_y_business_03", "a_m_y_cyclist_01", "a_m_y_dhill_01" },
-	{ "a_m_y_downtown_01", "a_m_y_eastsa_01", "a_m_y_eastsa_02", "a_m_y_epsilon_01", "a_m_y_epsilon_02", "a_m_y_gay_01", "a_m_y_gay_02", "a_m_y_genstreet_01", "a_m_y_genstreet_02", "a_m_y_golfer_01" },
-	{ "a_m_y_hasjew_01", "a_m_y_hiker_01", "a_m_y_hippy_01", "a_m_y_hipster_01", "a_m_y_hipster_02", "a_m_y_hipster_03", "a_m_y_indian_01", "a_m_y_jetski_01", "a_m_y_juggalo_01", "a_m_y_ktown_01" },
-	{ "a_m_y_ktown_02", "a_m_y_latino_01", "a_m_y_methhead_01", "a_m_y_mexthug_01", "a_m_y_motox_01", "a_m_y_motox_02", "a_m_y_musclbeac_01", "a_m_y_musclbeac_02", "a_m_y_polynesian_01", "a_m_y_roadcyc_01" },
-	{ "a_m_y_runner_01", "a_m_y_runner_02", "a_m_y_salton_01", "a_m_y_skater_01", "a_m_y_skater_02", "a_m_y_soucent_01", "a_m_y_soucent_02", "a_m_y_soucent_03", "a_m_y_soucent_04", "a_m_y_stbla_01" },
-	{ "a_m_y_stbla_02", "a_m_y_stlat_01", "a_m_y_stwhi_01", "a_m_y_stwhi_02", "a_m_y_sunbathe_01", "a_m_y_surfer_01", "a_m_y_vindouche_01", "a_m_y_vinewood_01", "a_m_y_vinewood_02", "a_m_y_vinewood_03" },
-	{ "a_m_y_vinewood_04", "a_m_y_yoga_01", "u_m_y_proldriver_01", "u_m_y_rsranger_01", "u_m_y_sbike", "u_m_y_staggrm_01", "u_m_y_tattoo_01", "csb_abigail", "csb_anita", "csb_anton" },
-	{ "csb_ballasog", "csb_bride", "csb_burgerdrug", "csb_car3guy1", "csb_car3guy2", "csb_chef", "csb_chin_goon", "csb_cletus", "csb_cop", "csb_customer" },
-	{ "csb_denise_friend", "csb_fos_rep", "csb_g", "csb_groom", "csb_grove_str_dlr", "csb_hao", "csb_hugh", "csb_imran", "csb_janitor", "csb_maude" },
-	{ "csb_mweather", "csb_ortega", "csb_oscar", "csb_porndudes", "csb_porndudes_p", "csb_prologuedriver", "csb_prolsec", "csb_ramp_gang", "csb_ramp_hic", "csb_ramp_hipster" },
-	{ "csb_ramp_marine", "csb_ramp_mex", "csb_reporter", "csb_roccopelosi", "csb_screen_writer", "csb_stripper_01", "csb_stripper_02", "csb_tonya", "csb_trafficwarden", "cs_amandatownley" },
-	{ "cs_andreas", "cs_ashley", "cs_bankman", "cs_barry", "cs_barry_p", "cs_beverly", "cs_beverly_p", "cs_brad", "cs_bradcadaver", "cs_carbuyer" },
-	{ "cs_casey", "cs_chengsr", "cs_chrisformage", "cs_clay", "cs_dale", "cs_davenorton", "cs_debra", "cs_denise", "cs_devin", "cs_dom" },
-	{ "cs_dreyfuss", "cs_drfriedlander", "cs_fabien", "cs_fbisuit_01", "cs_floyd", "cs_guadalope", "cs_gurk", "cs_hunter", "cs_janet", "cs_jewelass" },
-	{ "cs_jimmyboston", "cs_jimmydisanto", "cs_joeminuteman", "cs_johnnyklebitz", "cs_josef", "cs_josh", "cs_lamardavis", "cs_lazlow", "cs_lestercrest", "cs_lifeinvad_01" },
-	{ "cs_magenta", "cs_manuel", "cs_marnie", "cs_martinmadrazo", "cs_maryann", "cs_michelle", "cs_milton", "cs_molly", "cs_movpremf_01", "cs_movpremmale" },
-	{ "cs_mrk", "cs_mrsphillips", "cs_mrs_thornhill", "cs_natalia", "cs_nervousron", "cs_nigel", "cs_old_man1a", "cs_old_man2", "cs_omega", "cs_orleans" },
-	{ "cs_paper", "cs_paper_p", "cs_patricia", "cs_priest", "cs_prolsec_02", "cs_russiandrunk", "cs_siemonyetarian", "cs_solomon", "cs_stevehains", "cs_stretch" },
-	{ "cs_tanisha", "cs_taocheng", "cs_taostranslator", "cs_tenniscoach", "cs_terry", "cs_tom", "cs_tomepsilon", "cs_tracydisanto", "cs_wade", "cs_zimbor" },
-	{ "g_f_y_ballas_01", "g_f_y_families_01", "g_f_y_lost_01", "g_f_y_vagos_01", "g_m_m_armboss_01", "g_m_m_armgoon_01", "g_m_m_armlieut_01", "g_m_m_chemwork_01", "g_m_m_chemwork_01_p", "g_m_m_chiboss_01" },
-	{ "g_m_m_chiboss_01_p", "g_m_m_chicold_01", "g_m_m_chicold_01_p", "g_m_m_chigoon_01", "g_m_m_chigoon_01_p", "g_m_m_chigoon_02", "g_m_m_korboss_01", "g_m_m_mexboss_01", "g_m_m_mexboss_02", "g_m_y_armgoon_02" },
-	{ "g_m_y_azteca_01", "g_m_y_ballaeast_01", "g_m_y_ballaorig_01", "g_m_y_ballasout_01", "g_m_y_famca_01", "g_m_y_famdnf_01", "g_m_y_famfor_01", "g_m_y_korean_01", "g_m_y_korean_02", "g_m_y_korlieut_01" },
-	{ "g_m_y_lost_01", "g_m_y_lost_02", "g_m_y_lost_03", "g_m_y_mexgang_01", "g_m_y_mexgoon_01", "g_m_y_mexgoon_02", "g_m_y_mexgoon_03", "g_m_y_mexgoon_03_p", "g_m_y_pologoon_01", "g_m_y_pologoon_01_p" },
-	{ "g_m_y_pologoon_02", "g_m_y_pologoon_02_p", "g_m_y_salvaboss_01", "g_m_y_salvagoon_01", "g_m_y_salvagoon_02", "g_m_y_salvagoon_03", "g_m_y_salvagoon_03_p", "g_m_y_strpunk_01", "g_m_y_strpunk_02", "hc_driver" },
-	{ "hc_gunman", "hc_hacker", "ig_abigail", "ig_amandatownley", "ig_andreas", "ig_ashley", "ig_ballasog", "ig_bankman", "ig_barry", "ig_barry_p" },
-	{ "ig_bestmen", "ig_beverly", "ig_beverly_p", "ig_brad", "ig_bride", "ig_car3guy1", "ig_car3guy2", "ig_casey", "ig_chef", "ig_chengsr" },
-	{ "ig_chrisformage", "ig_clay", "ig_claypain", "ig_cletus", "ig_dale", "ig_davenorton", "ig_denise", "ig_devin", "ig_dom", "ig_dreyfuss" },
-	{ "ig_drfriedlander", "ig_fabien", "ig_fbisuit_01", "ig_floyd", "ig_groom", "ig_hao", "ig_hunter", "ig_janet", "ig_jay_norris", "ig_jewelass" },
-	{ "ig_jimmyboston", "ig_jimmydisanto", "ig_joeminuteman", "ig_johnnyklebitz", "ig_josef", "ig_josh", "ig_kerrymcintosh", "ig_lamardavis", "ig_lazlow", "ig_lestercrest" },
-	{ "ig_lifeinvad_01", "ig_lifeinvad_02", "ig_magenta", "ig_manuel", "ig_marnie", "ig_maryann", "ig_maude", "ig_michelle", "ig_milton", "ig_molly" },
-	{ "ig_mrk", "ig_mrsphillips", "ig_mrs_thornhill", "ig_natalia", "ig_nervousron", "ig_nigel", "ig_old_man1a", "ig_old_man2", "ig_omega", "ig_oneil" },
-	{ "ig_orleans", "ig_ortega", "ig_paper", "ig_patricia", "ig_priest", "ig_prolsec_02", "ig_ramp_gang", "ig_ramp_hic", "ig_ramp_hipster", "ig_ramp_mex" },
-	{ "ig_roccopelosi", "ig_russiandrunk", "ig_screen_writer", "ig_siemonyetarian", "ig_solomon", "ig_stevehains", "ig_stretch", "ig_talina", "ig_tanisha", "ig_taocheng" },
-	{ "ig_taostranslator", "ig_taostranslator_p", "ig_tenniscoach", "ig_terry", "ig_tomepsilon", "ig_tonya", "ig_tracydisanto", "ig_trafficwarden", "ig_tylerdix", "ig_wade" },
-	{ "ig_zimbor", "mp_f_deadhooker", "mp_f_freemode_01", "mp_f_misty_01", "mp_f_stripperlite", "mp_g_m_pros_01", "mp_headtargets", "mp_m_claude_01", "mp_m_exarmy_01", "mp_m_famdd_01" },
-	{ "mp_m_fibsec_01", "mp_m_freemode_01", "mp_m_marston_01", "mp_m_niko_01", "mp_m_shopkeep_01", "mp_s_m_armoured_01", "", "", "", "" },
-	{ "", "s_f_m_fembarber", "s_f_m_maid_01", "s_f_m_shop_high", "s_f_m_sweatshop_01", "s_f_y_airhostess_01", "s_f_y_bartender_01", "s_f_y_baywatch_01", "s_f_y_cop_01", "s_f_y_factory_01" },
-	{ "s_f_y_hooker_01", "s_f_y_hooker_02", "s_f_y_hooker_03", "s_f_y_migrant_01", "s_f_y_movprem_01", "s_f_y_ranger_01", "s_f_y_scrubs_01", "s_f_y_sheriff_01", "s_f_y_shop_low", "s_f_y_shop_mid" },
-	{ "s_f_y_stripperlite", "s_f_y_stripper_01", "s_f_y_stripper_02", "s_f_y_sweatshop_01", "s_m_m_ammucountry", "s_m_m_armoured_01", "s_m_m_armoured_02", "s_m_m_autoshop_01", "s_m_m_autoshop_02", "s_m_m_bouncer_01" },
-	{ "s_m_m_chemsec_01", "s_m_m_ciasec_01", "s_m_m_cntrybar_01", "s_m_m_dockwork_01", "s_m_m_doctor_01", "s_m_m_fiboffice_01", "s_m_m_fiboffice_02", "s_m_m_gaffer_01", "s_m_m_gardener_01", "s_m_m_gentransport" },
-	{ "s_m_m_hairdress_01", "s_m_m_highsec_01", "s_m_m_highsec_02", "s_m_m_janitor", "s_m_m_lathandy_01", "s_m_m_lifeinvad_01", "s_m_m_linecook", "s_m_m_lsmetro_01", "s_m_m_mariachi_01", "s_m_m_marine_01" },
-	{ "s_m_m_marine_02", "s_m_m_migrant_01", "u_m_y_zombie_01", "s_m_m_movprem_01", "s_m_m_movspace_01", "s_m_m_paramedic_01", "s_m_m_pilot_01", "s_m_m_pilot_02", "s_m_m_postal_01", "s_m_m_postal_02" },
-	{ "s_m_m_prisguard_01", "s_m_m_scientist_01", "s_m_m_security_01", "s_m_m_snowcop_01", "s_m_m_strperf_01", "s_m_m_strpreach_01", "s_m_m_strvend_01", "s_m_m_trucker_01", "s_m_m_ups_01", "s_m_m_ups_02" },
-	{ "s_m_o_busker_01", "s_m_y_airworker", "s_m_y_ammucity_01", "s_m_y_armymech_01", "s_m_y_autopsy_01", "s_m_y_barman_01", "s_m_y_baywatch_01", "s_m_y_blackops_01", "s_m_y_blackops_02", "s_m_y_busboy_01" },
-	{ "s_m_y_chef_01", "s_m_y_clown_01", "s_m_y_construct_01", "s_m_y_construct_02", "s_m_y_cop_01", "s_m_y_dealer_01", "s_m_y_devinsec_01", "s_m_y_dockwork_01", "s_m_y_doorman_01", "s_m_y_dwservice_01" },
-	{ "s_m_y_dwservice_02", "s_m_y_factory_01", "s_m_y_fireman_01", "s_m_y_garbage", "s_m_y_grip_01", "s_m_y_hwaycop_01", "s_m_y_marine_01", "s_m_y_marine_02", "s_m_y_marine_03", "s_m_y_mime" },
-	{ "s_m_y_pestcont_01", "s_m_y_pilot_01", "s_m_y_prismuscl_01", "s_m_y_prisoner_01", "s_m_y_ranger_01", "s_m_y_robber_01", "s_m_y_sheriff_01", "s_m_y_shop_mask", "s_m_y_strvend_01", "s_m_y_swat_01" },
-	{ "s_m_y_uscg_01", "s_m_y_valet_01", "s_m_y_waiter_01", "s_m_y_winclean_01", "s_m_y_xmech_01", "s_m_y_xmech_02", "u_f_m_corpse_01", "u_f_m_miranda", "u_f_m_promourn_01", "u_f_o_moviestar" },
-	{ "u_f_o_prolhost_01", "u_f_y_bikerchic", "u_f_y_comjane", "u_f_y_corpse_01", "u_f_y_corpse_02", "u_f_y_hotposh_01", "u_f_y_jewelass_01", "u_f_y_mistress", "u_f_y_poppymich", "u_f_y_princess" },
-	{ "u_f_y_spyactress", "u_m_m_aldinapoli", "u_m_m_bankman", "u_m_m_bikehire_01", "u_m_m_fibarchitect", "u_m_m_filmdirector", "u_m_m_glenstank_01", "u_m_m_griff_01", "u_m_m_jesus_01", "u_m_m_jewelsec_01" },
-	{ "u_m_m_jewelthief", "u_m_m_markfost", "u_m_m_partytarget", "u_m_m_prolsec_01", "u_m_m_promourn_01", "u_m_m_rivalpap", "u_m_m_spyactor", "u_m_m_willyfist", "u_m_o_finguru_01", "u_m_o_taphillbilly" },
-	{ "u_m_o_tramp_01", "u_m_y_abner", "u_m_y_antonb", "u_m_y_babyd", "u_m_y_baygor", "u_m_y_burgerdrug_01", "u_m_y_chip", "u_m_y_cyclist_01", "u_m_y_fibmugger_01", "u_m_y_guido_01" },
-	{ "u_m_y_gunvend_01", "u_m_y_hippie_01", "u_m_y_imporage", "u_m_y_justin", "u_m_y_mani", "u_m_y_militarybum", "u_m_y_paparazzi", "u_m_y_party_01", "u_m_y_pogo_01", "u_m_y_prisoner_01" }
+	{ "Creatures", 
+	// [1, 15]
+	"Boar", "Cat", "Chimp", "Chop", "Cow", "Coyote", "Deer", "Hen", "Husky", "Mtlion", "Pig", "Rat", "Retriever", "Rhesus", "Shepherd",
+	// [16, 19]
+	"Cormorant", "Crow", "Hawk", "Pigeon",
+	// [20, 26]
+	"Dolphin", "Fish", "Humpback", "Seagull", "Sharkhammer", "Sharktiger", "Whale" },
+
+
+	// 4 Ambient
+	{ "_ambient", "a_m_m_afriamer_01", "a_m_m_acult_01", "a_m_o_acult_01", "a_m_o_acult_02", "a_m_y_acult_01", "a_m_y_acult_02", 
+	"a_f_m_bodybuild_01", "a_f_m_beach_01", "a_m_m_beach_01", "a_m_m_beach_02", "a_m_y_musclbeac_01", "a_m_y_musclbeac_02", 
+	"a_m_o_beach_01", "a_f_m_trampbeac_01", "a_m_m_trampbeac_01", "a_m_y_beachvesp_01", "a_m_y_beachvesp_02", "a_f_y_beach_01", 
+	"a_m_y_beach_01", "a_m_y_beach_02", "a_m_y_beach_03", "a_f_m_bevhills_01", "a_m_m_bevhills_01", "a_f_m_bevhills_02", 
+	"a_m_m_bevhills_02", "a_f_y_bevhills_01", "a_m_y_bevhills_01", "a_f_y_bevhills_02", "a_m_y_bevhills_02", "a_f_y_bevhills_03", 
+	"a_f_y_bevhills_04", "a_m_y_breakdance_01", "a_m_y_busicas_01", "a_m_m_business_01", "a_f_m_business_02", "a_f_y_business_01", 
+	"a_m_y_business_01", "a_f_y_business_02", "a_m_y_business_02", "a_f_y_business_03", "a_m_y_business_03", "a_f_y_business_04", 
+	"a_m_y_cyclist_01", "a_f_m_downtown_01", "a_m_y_downtown_01", "a_m_y_dhill_01", "a_f_m_eastsa_01", "a_m_m_eastsa_01", 
+	"a_f_m_eastsa_02", "a_m_m_eastsa_02", "a_f_y_eastsa_01", "a_m_y_eastsa_01", "a_f_y_eastsa_02", "a_m_y_eastsa_02", 
+	"a_f_y_eastsa_03", "a_f_y_epsilon_01", "a_m_y_epsilon_01", "a_m_y_epsilon_02", "a_m_m_farmer_01", "a_f_m_fatbla_01", 
+	"a_f_m_fatcult_01", "a_m_m_fatlatin_01", "a_f_m_fatwhite_01", "a_f_y_fitness_01", "a_f_y_fitness_02", "a_m_y_gay_01", 
+	"a_m_y_gay_02", "a_m_m_genfat_01", "a_m_m_genfat_02", "a_f_y_genhot_01", "a_f_o_genstreet_01", "a_m_o_genstreet_01", 
+	"a_m_y_genstreet_01", "a_m_y_genstreet_02", "a_m_m_golfer_01", "a_f_y_golfer_01", "a_m_y_golfer_01", "a_m_m_hasjew_01", 
+	"a_m_y_hasjew_01", "a_f_y_hiker_01", "a_m_y_hiker_01", "a_m_m_hillbilly_01", "a_m_m_hillbilly_02", "a_f_y_hippie_01", 
+	"a_m_y_hippy_01", "a_f_y_hipster_01", "a_m_y_hipster_01", "a_f_y_hipster_02", "a_m_y_hipster_02", "a_f_y_hipster_03", 
+	"a_m_y_hipster_03", "a_f_y_hipster_04", "a_m_m_indian_01", "a_f_o_indian_01", "a_f_y_indian_01", "a_m_y_indian_01", 
+	"a_m_y_jetski_01", "a_f_y_juggalo_01", "a_m_y_juggalo_01", "a_f_m_ktown_01", "a_m_m_ktown_01", "a_f_m_ktown_02", 
+	"a_f_o_ktown_01", "a_m_o_ktown_01", "a_m_y_ktown_01", "a_m_y_ktown_02", "a_m_y_latino_01", "a_m_m_malibu_01", 
+	"a_m_y_methhead_01", "a_m_m_mexcntry_01", "a_m_m_mexlabor_01", "a_m_y_mexthug_01", "a_m_y_motox_01", "a_m_y_motox_02", 
+	"a_m_m_og_boss_01", "a_m_m_paparazzi_01", "a_m_m_polynesian_01", "a_m_y_polynesian_01", "a_f_m_prolhost_01", "a_m_m_prolhost_01", 
+	"a_m_y_roadcyc_01", "a_f_y_runner_01", "a_m_y_runner_01", "a_m_y_runner_02", "a_f_y_rurmeth_01", "a_m_m_rurmeth_01", 
+	"a_f_m_salton_01", "a_m_m_salton_01", "a_m_m_salton_02", "a_m_m_salton_03", "a_m_m_salton_04", "a_f_o_salton_01", 
+	"a_m_o_salton_01", "a_m_y_salton_01", "a_f_y_scdressy_01", "a_m_m_skater_01", "a_f_y_skater_01", "a_m_y_skater_01", 
+	"a_m_y_skater_02", "a_f_m_skidrow_01", "a_m_m_skidrow_01", "a_m_m_socenlat_01", "a_f_m_soucent_01", "a_m_m_soucent_01", 
+	"a_f_m_soucent_02", "a_m_m_soucent_02", "a_m_m_soucent_03", "a_m_m_soucent_04", "a_f_m_soucentmc_01", "a_f_o_soucent_01", 
+	"a_m_o_soucent_01", "a_f_o_soucent_02", "a_m_o_soucent_02", "a_m_o_soucent_03", "a_f_y_soucent_01", "a_m_y_soucent_01", 
+	"a_f_y_soucent_02", "a_m_y_soucent_02", "a_f_y_soucent_03", "a_m_y_soucent_03", "a_m_y_soucent_04", "a_m_y_stbla_01", 
+	"a_m_y_stbla_02", "a_m_y_stlat_01", "a_m_m_stlat_02", "a_m_y_stwhi_01", "a_m_y_stwhi_02", "a_m_y_sunbathe_01", "a_m_y_surfer_01", 
+	"a_f_y_tennis_01", "a_m_m_tennis_01", "a_f_y_topless_01", "a_f_m_tourist_01", "a_m_m_tourist_01", "a_f_y_tourist_01", 
+	"a_f_y_tourist_02", "a_f_m_tramp_01", "a_m_m_tramp_01", "a_m_o_tramp_01", "a_m_m_tranvest_01", "a_m_m_tranvest_02", 
+	"a_f_y_vinewood_01", "a_m_y_vinewood_01", "a_f_y_vinewood_02", "a_m_y_vinewood_02", "a_f_y_vinewood_03", "a_m_y_vinewood_03", 
+	"a_f_y_vinewood_04", "a_m_y_vinewood_04", "a_m_y_vindouche_01", "a_f_y_yoga_01", "a_m_y_yoga_01" },
+
+	{ "[ Ambient ]", "African American (M)", "Altruist Cult Middle (M)", "Altruist Cult Old 1 (M)", "Altruist Cult Old 2 (M)", "Altruist Cult Young 1 (M)", 
+	"Altruist Cult Young 2 (M)", "Beach Body Builder (F)", "Beach Middle 1 (F)", "Beach Middle 1 (M)", "Beach Middle 2 (M)", "Beach Muscle 1 (M)", 
+	"Beach Muscle 2 (M)", "Beach Old (M)", "Beach Tramp (F)", "Beach Tramp (M)", "Beach Vespucci 1 (M)", "Beach Vespucci 2 (M)", "Beach Young (F)", 
+	"Beach Young 1 (M)", "Beach Young 2 (M)", "Beach Young 3 (M)", "Beverly Hills Middle 1 (F)", "Beverly Hills Middle 1 (M)", "Beverly Hills Middle 2 (F)", 
+	"Beverly Hills Middle 2 (M)", "Beverly Hills Young 1 (F)", "Beverly Hills Young 1 (M)", "Beverly Hills Young 2 (F)", "Beverly Hills Young 2 (M)", 
+	"Beverly Hills Young 3 (F)", "Beverly Hills Young 4 (F)", "Break Dancer (M)", "Busicas 1 (M)", "Business Middle 1 (M)", "Business Middle 2 (F)", 
+	"Business Young 1 (F)", "Business Young 1 (M)", "Business Young 2 (F)", "Business Young 2 (M)", "Business Young 3 (F)", "Business Young 3 (M)", 
+	"Business Young 4 (F)", "Cyclist (M)", "Downtown (F)", "Downtown (M)", "Downtown Hill (M)", "East SA Middle 1 (F)", "East SA Middle 1 (M)", 
+	"East SA Middle 2 (F)", "East SA Middle 2 (M)", "East SA Young 1 (F)", "East SA Young 1 (M)", "East SA Young 2 (F)", "East SA Young 2 (M)", 
+	"East SA Young 3 (F)", "Epsilon 1 (F)", "Epsilon 1 (M)", "Epsilon 2 (M)", "Farmer (M)", "Fat Black (F)", "Fat Cult (F)", "Fat Latin (M)", "Fat White (F)", 
+	"Fitness 1 (F)", "Fitness 2 (F)", "Gay 1 (M)", "Gay 2 (M)", "Gen Fat 1 (M)", "Gen Fat 2 (M)", "Gen Hot 1 (F)", "Gen Street Old 1 (F)", "Gen Street Old 1 (M)", 
+	"Gen Street Young 1 (M)", "Gen Street Young 2 (M)", "Golfer Middle 1 (M)", "Golfer Young 1 (F)", "Golfer Young 1 (M)", "Hasjew Middle 1 (M)", 
+	"Hasjew Young 1 (M)", "Hiker 1 (F)", "Hiker 1 (M)", "Hillbilly 1 (M)", "Hillbilly 2 (M)", "Hippie 1 (F)", "Hippy 1 (M)", "Hipster 1 (F)", "Hipster 1 (M)", 
+	"Hipster 2 (F)", "Hipster 2 (M)", "Hipster 3 (F)", "Hipster 3 (M)", "Hipster 4 (F)", "Indian Middle 1 (M)", "Indian Old 1 (F)", "Indian Young 1 (F)", 
+	"Indian Young 1 (M)", "Jetski (M)", "Juggalo 1 (F)", "Juggalo 1 (M)", "Korean Town Middle 1 (F)", "Korean Town Middle 1 (M)", "Korean Town Middle 2 (F)", 
+	"Korean Town Old 1 (F)", "Korean Town Old 1 (M)", "Korean Town Young 1 (M)", "Korean Town Young 2 (M)", "Latino (M)", "Malibu (M)", "Meth Head (M)", 
+	"Mexican Country (M)", "Mexican Labor (M)", "Mexican Thug (M)", "MotoX 1 (M)", "MotoX 2 (M)", "OG Boss (M)", "Paparazzi (M)", "Polynesian Middle (M)", 
+	"Polynesian Young (M)", "Prologue Host (F)", "Prologue Host (M)", "Road cyclist 1 (M)", "Runner (F)", "Runner 1 (M)", "Runner 2 (M)", "Rur meth 1 (F)", 
+	"Rur meth 1 (M)", "Salton Middle 1 (F)", "Salton Middle 1 (M)", "Salton Middle 2 (M)", "Salton Middle 3 (M)", "Salton Middle 4 (M)", "Salton Old 1 (F)", 
+	"Salton Old 1 (M)", "Salton Young 1 (M)", "Scdressy 1 (F)", "Skater Middle 1 (M)", "Skater Young 1 (F)", "Skater Young 1 (M)", "Skater Young 2 (M)", 
+	"Skid Row (F)", "Skid Row (M)", "Socenlat 1 (M)", "Soucent Middle 1 (F)", "Soucent Middle 1 (M)", "Soucent Middle 2 (F)", "Soucent Middle 2 (M)", 
+	"Soucent Middle 3 (M)", "Soucent Middle 4 (M)", "Soucent Middle MC (F)", "Soucent Old 1 (F)", "Soucent Old 1 (M)", "Soucent Old 2 (F)", "Soucent Old 2 (M)", 
+	"Soucent Old 3 (M)", "Soucent Young 1 (F)", "Soucent Young 1 (M)", "Soucent Young 2 (F)", "Soucent Young 2 (M)", "Soucent Young 3 (F)", "Soucent Young 3 (M)", 
+	"Soucent Young 4 (M)", "St Black 1 (M)", "St Black 2 (M)", "St Latino 1 (M)", "St Latino 2 (M)", "St White 1 (M)", "St White 2 (M)", "Sunbathe (M)", 
+	"Surfer (M)", "Tennis (F)", "Tennis (M)", "Topless (F)", "Tourist Middle 1 (F)", "Tourist Middle 1 (M)", "Tourist Young 1 (F)", "Tourist Young 2 (F)", 
+	"Tramp Middle (F)", "Tramp Middle (M)", "Tramp Young (M)", "Transvestites 1 (M)", "Transvestites 2 (M)", "Vinewood 1 (F)", "Vinewood 1 (M)", "Vinewood 2 (F)", 
+	"Vinewood 2 (M)", "Vinewood 3 (F)", "Vinewood 3 (M)", "Vinewood 4 (F)", "Vinewood 4 (M)", "Vinewood Douche (M)", "Yoga (F)", "Yoga (M)" },
+
+	// 6 Gangs
+	{ "_gangs", "g_m_m_armboss_01", "g_m_m_armgoon_01", "g_m_y_armgoon_02", "g_m_m_armlieut_01", "g_m_y_azteca_01", "g_m_y_ballaeast_01", "g_m_y_ballaorig_01", 
+	"g_f_y_ballas_01", "g_m_y_ballasout_01", "g_m_m_chemwork_01", "g_m_m_chiboss_01", "g_m_m_chicold_01", "g_m_m_chigoon_01", "g_m_m_chigoon_02", 
+	"g_m_y_famca_01", "g_m_y_famdnf_01", "g_m_y_famfor_01", "g_f_y_families_01", "g_m_m_korboss_01", "g_m_y_korean_01", "g_m_y_korean_02", "g_m_y_korlieut_01", 
+	"g_f_y_lost_01", "g_m_y_lost_01", "g_m_y_lost_02", "g_m_y_lost_03", "g_m_m_mexboss_01", "g_m_m_mexboss_02", "g_m_y_mexgang_01", "g_m_y_mexgoon_01", 
+	"g_m_y_mexgoon_02", "g_m_y_mexgoon_03", "g_m_y_pologoon_01", "g_m_y_pologoon_02", "g_m_y_salvaboss_01", "g_m_y_salvagoon_01", "g_m_y_salvagoon_02", 
+	"g_m_y_salvagoon_03", "g_m_y_strpunk_01", "g_m_y_strpunk_02", "g_f_y_vagos_01" },
+
+	{ "[ Gangs ]", "Arm Boss (M)", "Arm Goon 1 (M)", "Arm Goon 2 (M)", "Arm Lieutenant (M)", "Azteca (M)", "Balla East (M)", "Balla Original (M)", "Ballas (F)", 
+	"Ballas Outside (M)", "Chem Worker (M)", "Chinese Boss (M)", "Chinese Cold (M)", "Chinese Goon 1 (M)", "Chinese Goon 2 (M)", "Families Ca (M)", 
+	"Families DNF (M)", "Families For (M)", "Families (F)", "Korean Boss (M)", "Korean 1 (M)", "Korean 2 (M)", "Korean Lieutenant (M)", "Lost (F)", 
+	"Lost 1 (M)", "Lost 2 (M)", "Lost 3 (M)", "Mexican Boss 1 (M)", "Mexican Boss 2 (M)", "Mex Gang (M)", "Mex Goon 1 (M)", "Mexgoon 2 (M)", "Mexgoon 3 (M)", 
+	"Pologoon 1 (M)", "Pologoon 2 (M)", "Salvaboss 1 (M)", "Salvagoon 1 (M)", "Salvagoon 2 (M)", "Salvagoon 3 (M)", "Street Punk 1 (M)", "Street Punk 2 (M)", 
+	"Vagos 1 (F)" },
+	
+	// 8 In-game
+	{ "_ingame", "ig_abigail", "ig_andreas", "csb_anita", "csb_anton", "ig_ashley", "ig_barry", "ig_beverly", "ig_brad", "cs_bradcadaver", "ig_casey", 
+	"ig_chef", "ig_chengsr", "ig_chrisformage", "ig_clay", "ig_claypain", "ig_cletus", "ig_dale", "ig_davenorton", "cs_debra", "ig_denise", "csb_denise_friend", 
+	"ig_devin", "ig_amandatownley", "ig_jimmydisanto", "ig_tracydisanto", "ig_dom", "ig_drfriedlander", "ig_dreyfuss", "ig_fabien", "ig_floyd", "csb_g", 
+	"ig_hao", "csb_hugh", "csb_imran", "ig_janet", "ig_jay_norris", "ig_jimmyboston", "ig_joeminuteman", "ig_johnnyklebitz", "ig_josef", "ig_josh", 
+	"ig_kerrymcintosh", "ig_lamardavis", "ig_lazlow", "ig_lestercrest", "ig_magenta", "ig_manuel", "ig_marnie", "cs_martinmadrazo", "ig_maryann", "ig_maude", 
+	"ig_michelle", "ig_milton", "ig_molly", "ig_mrk", "ig_mrsphillips", "ig_mrs_thornhill", "ig_natalia", "ig_nervousron", "ig_nigel", "ig_omega", 
+	"ig_orleans", "ig_ortega", "csb_oscar", "ig_paper", "ig_patricia", "ig_roccopelosi", "ig_siemonyetarian", "ig_solomon", "ig_stevehains", "ig_stretch", 
+	"ig_talina", "ig_tanisha", "ig_taocheng", "ig_taostranslator", "ig_terry", "cs_tom", "ig_tomepsilon", "ig_tonya", "ig_tylerdix", "ig_wade", "ig_zimbor", 
+	"ig_ballasog", "ig_bankman", "ig_bestmen", "ig_bride", "ig_car3guy1", "ig_car3guy2", "cs_carbuyer", "csb_chin_goon", "csb_cop", "csb_customer", 
+	"ig_fbisuit_01", "csb_fos_rep", "ig_ramp_gang", "ig_groom", "csb_grove_str_dlr", "cs_guadalope", "cs_gurk", "hc_driver", "hc_gunman", "hc_hacker", 
+	"ig_ramp_hic", "ig_ramp_hipster", "ig_hunter", "csb_janitor", "ig_jewelass", "ig_lifeinvad_01", "ig_lifeinvad_02", "csb_ramp_marine", "csb_mweather", 
+	"ig_ramp_mex", "cs_movpremf_01", "cs_movpremmale", "ig_old_man1a", "ig_old_man2", "csb_porndudes", "ig_priest", "csb_prologuedriver", "csb_prolsec", 
+	"ig_prolsec_02", "csb_reporter", "ig_russiandrunk", "ig_screen_writer", "ig_tenniscoach", "ig_trafficwarden" },
+
+	{ "In-Game", "Abigail Mathers", "Andreas Sanchez", "Anita Mendoza", "Anton Beaudelaire", "Ashley Butler", "Barry", "Beverly Felton", "Brad Snider", 
+	"Brad (Cadaver)", "Casey", "Chef", "Cheng SR", "Chris Formage", "Clay Simons", "Clay Simons Pain", "Cletus Ewing", "Dale Jenkins", "Dave Norton", 
+	"Debra", "Denise", "Denise Friend", "Devin Weston", "Di Santo, Amanda", "Di Santo, Jimmy", "Di Santo, Tracy", "Dom Beasley", "Dr. Friedlander", 
+	"Dreyfuss", "Fabien", "Floyd", "Gerald", "Hao", "Hugh Harrison", "Imran Shinowa", "Janet", "Jay Norris", "Jimmy Boston", "Joe Minute Man", "Johnn Klebitz", 
+	"Josef", "Josh", "Kerry McIntosh", "Lamar Davis", "Lazlow Jones", "Lester Crest", "Magenta", "Manuel", "Marnie", "Martin Madrazo", "Mary Ann", 
+	"Maude", "Michelle", "Milton", "Molly", "Mrk", "Mrs. Phillips", "Mrs. Thornhill", "Natalia", "Nervous Ron", "Nigel", "Omega", "Orleans (Big Foot)", 
+	"Ortega", "Oscar", "Paper", "Patricia", "Rocco Pelosi", "Siemon Yetarian", "Solomon", "Steve Hains", "Stretch", "Talina", "Tanisha", "Tao Cheng", 
+	"Tao's Translator", "Terry", "Tom", "Tom (Epsilon)", "Tonya", "Tyler Dix", "Wade", "Zimbor", "Ballas OG", "Bankman", "Bestmen", "Bride", "Car 3 Guy 1", 
+	"Car 3 Guy 2", "Car Buyer", "Chinense Goon", "Cop", "Customer", "FIB Suit", "Fos Rep", "Gang (Rampage)", "Groom", "Grove Street DLR", "Guadalope", "Gurk",
+	"HC Driver", "HC Gunman", "HC Hacker", "Hic (Rampage)", "Hipster (Rampage)", "Hunter", "Janitor", "Jewelass", "Life Invader 1", "Life Invader 2", "Marine", 
+	"MerryWeather", "Mexican (Rampage)", "Mov Premier Female", "Mov Premier Male", "Old Man 1", "Old Man 2", "Porn Dudes", "Priest", "Prologue Driver", 
+	"Prologue Security", "Prologue Security 2", "Reporter", "Russian Drunk", "Screen Writer", "Tennis Coach", "Traffic Warden" },
+	
+	// 10 GTA Online
+	{ "_gtaonline", "mp_m_claude_01", "mp_m_marston_01", "mp_f_misty_01", "mp_m_niko_01", "mp_s_m_armoured_01", "mp_f_deadhooker", "mp_m_exarmy_01", 
+	"mp_m_famdd_01", "mp_m_fibsec_01", "mp_g_m_pros_01", "mp_m_shopkeep_01", "mp_f_stripperlite" },
+
+	{ "GTA Online", "Claude", "John Marston", "Misty", "Niko Bellic", "Armoured", "Dead Hooker", "Ex Army", "Families DD", "FIB Security", "Pros", "Shop Keeper", 
+	"Stripper Lite" },
+	
+	// 12 Specials
+	{ "_special", "s_f_y_airhostess_01", "s_m_y_airworker", "s_m_m_movalien_01", "s_m_y_ammucity_01", "s_m_m_ammucountry", "s_m_m_armoured_01", 
+	"s_m_m_armoured_02", "s_m_y_armymech_01", "s_m_y_autopsy_01", "s_m_m_autoshop_01", "s_m_m_autoshop_02", "s_f_m_fembarber", "s_m_y_barman_01", 
+	"s_f_y_bartender_01", "s_f_y_baywatch_01", "s_m_y_baywatch_01", "s_m_y_blackops_01", "s_m_y_blackops_02", "s_m_m_bouncer_01", "s_m_y_busboy_01", 
+	"s_m_o_busker_01", "s_m_y_chef_01", "s_m_y_clown_01", "s_m_m_cntrybar_01", "s_m_y_construct_01", "s_m_y_construct_02", "s_f_y_cop_01", "s_m_y_cop_01", 
+	"s_m_y_dealer_01", "s_m_m_dockwork_01", "s_m_y_dockwork_01", "s_m_m_doctor_01", "s_m_y_doorman_01", "s_m_y_dwservice_01", "s_m_y_dwservice_02", 
+	"s_f_y_factory_01", "s_m_y_factory_01", "s_m_m_fiboffice_01", "s_m_m_fiboffice_02", "s_m_y_fireman_01", "s_m_m_gaffer_01", "s_m_y_garbage", 
+	"s_m_m_gardener_01", "s_m_m_gentransport", "s_m_y_grip_01", "s_m_m_hairdress_01", "s_m_y_hwaycop_01", "s_f_y_hooker_01", "s_f_y_hooker_02", 
+	"s_f_y_hooker_03", "s_m_m_janitor", "s_m_m_lathandy_01", "s_m_m_lifeinvad_01", "s_m_m_linecook", "s_m_m_lsmetro_01", "s_f_m_maid_01", "s_m_m_mariachi_01", 
+	"s_m_m_marine_01", "s_m_m_marine_02", "s_m_y_marine_01", "s_m_y_marine_02", "s_m_y_marine_03", "s_f_y_migrant_01", "s_m_m_migrant_01", "s_m_y_mime", 
+	"s_f_y_movprem_01", "s_m_m_movprem_01", "s_m_y_swat_01", "s_m_m_paramedic_01", "s_m_y_pestcont_01", "s_m_m_pilot_01", "s_m_m_pilot_02", "s_m_y_pilot_01", 
+	"s_m_m_postal_01", "s_m_m_postal_02", "s_m_m_prisguard_01", "s_m_y_prismuscl_01", "s_m_y_prisoner_01", "s_f_y_ranger_01", "s_m_y_ranger_01", 
+	"s_m_y_robber_01", "s_m_m_scientist_01", "s_f_y_scrubs_01", "s_m_m_security_01", "s_m_m_chemsec_01", "s_m_y_devinsec_01", "s_m_m_highsec_01", 
+	"s_m_m_highsec_02", "s_m_m_ciasec_01", "s_f_y_sheriff_01", "s_m_y_sheriff_01", "s_f_m_shop_high", "s_f_y_shop_low", "s_m_y_shop_mask", "s_f_y_shop_mid", 
+	"s_m_m_snowcop_01", "s_m_m_movspace_01", "s_f_y_stripper_01", "s_f_y_stripper_02", "s_f_y_stripperlite", "s_m_m_strperf_01", "s_m_m_strpreach_01", 
+	"s_m_m_strvend_01", "s_m_y_strvend_01", "s_f_m_sweatshop_01", "s_f_y_sweatshop_01", "s_m_m_trucker_01", "s_m_m_ups_01", "s_m_m_ups_02", "s_m_y_uscg_01", 
+	"s_m_y_valet_01", "s_m_y_waiter_01", "s_m_y_winclean_01", "s_m_y_xmech_01", "s_m_y_xmech_02" },
+
+	{ "[ Special ]", "Air Hostess (F)", "Air Worker (M)", "Alien (M)", "AmmuNation City (M)", "AmmuNation Country (M)", "Armoured 1 (M)", "Armoured 2 (M)", 
+	"Army Mechanics (M)", "Autopsy (M)", "Autoshop 1 (M)", "Autoshop 2 (M)", "Barber (F)", "Barman (M)", "Bartender (F)", "Baywatch (F)", "Baywatch (M)", 
+	"Blackops 1 (M)", "Blackops 2 (M)", "Bouncer (M)", "Busboy (M)", "Busker (M)", "Chef (M)", "Clown 1 (M)", "Cntrybar 1 (M)", "Construct 1 (M)", 
+	"Construct 2 (M)", "Cop 1 (F)", "Cop 1 (M)", "Dealer 1 (M)", "Dockwork M (M)", "Dockwork Y (M)", "Doctor (M)", "Doorman (M)", "Dwservice 1 (M)", 
+	"Dwservice 2 (M)", "Factory 1 (F)", "Factory 1 (M)", "FIB Office 1 (M)", "FIB Office 2 (M)", "Fireman (M)", "Gaffer (M)", "Garbage (M)", "Gardener (M)", 
+	"Gen Transport (M)", "Grip (M)", "Hairdress (M)", "Highway Cop 1 (M)", "Hooker 1 (F)", "Hooker 2 (F)", "Hooker 3 (F)", "Janitor (M)", "Lathandy 1 (M)", 
+	"Life Invader (M)", "Linecook (M)", "LS Metro (M)", "Maid (F)", "Mariachi (Mexican man) (M)", "Marine M 1 (M)", "Marine M 2 (M)", "Marine Y 1 (M)", 
+	"Marine Y 2 (M)", "Marine Y 3 (M)", "Migrant (F)", "Migrant (M)", "Mime (M)", "Mov Premier (F)", "Mov Premier (M)", "NOOSE (SWAT) (M)", "Paramedic (M)",
+	"Pest Control  (M)", "Pilot M 1 (M)", "Pilot M 2 (M)", "Pilot Y 1 (M)", "Postal 1 (M)", "Postal 2 (M)", "Prison Guard (M)", "Prison Muscle (M)", 
+	"Prisoner (M)", "Ranger (F)", "Ranger (M)", "Robber (M)", "Scientist (M)", "Scrubs (F)", "Security 1 (M)", "Security Chem (M)", "Security Devin (M)", 
+	"Security High 1 (M)", "Security High 2 (M)", "Security ICA (M)", "Sheriff (F)", "Sheriff (M)", "Shop High-end (F)", "Shop Low-end (F)", "Shop Mask (M)", 
+	"Shop Mid-end (F)", "Snow Cop (M)", "Space Ranger (M)", "Stripper 1 (F)", "Stripper 2 (F)", "Stripper Lite (F)", "Strperf 1 (M)", "Strpreach 1 (M)", 
+	"Strvend 1 (M)", "Strvend 1 (M)", "Sweatshop M (F)", "Sweatshop Y (F)", "Trucker (M)", "Ups 1 (M)", "Ups 2 (M)", "US Coast Guard (M)", "Valet (M)", 
+	"Waiter (M)", "Windows Cleaner (M)", "X Mechanics 1 (M)", "X Mechanics 2 (M)" },
+	
+	// 14 Unique
+	{ "_unique", "u_m_y_abner", "u_m_m_aldinapoli", "u_m_y_antonb", "u_m_y_chip", "u_f_y_comjane", "u_m_m_griff_01", "u_m_y_guido_01", "u_m_y_imporage", 
+	"u_m_m_jesus_01", "u_m_y_justin", "u_m_y_mani", "u_m_m_markfost", "u_f_m_miranda", "u_m_y_pogo_01", "u_f_y_poppymich", "u_m_y_rsranger_01", "u_m_m_willyfist",
+	"u_m_y_zombie_01", "u_m_y_babyd", "u_m_m_bankman", "u_m_y_baygor", "u_m_m_bikehire_01", "u_f_y_bikerchic", "u_m_y_burgerdrug_01", "u_f_m_corpse_01", 
+	"u_f_y_corpse_01", "u_f_y_corpse_02", "u_m_y_cyclist_01", "u_m_m_fibarchitect", "u_m_y_fibmugger_01", "u_m_m_filmdirector", "u_m_o_finguru_01",
+	"u_m_m_glenstank_01", "u_m_y_gunvend_01", "u_m_y_hippie_01", "u_f_y_hotposh_01", "u_f_y_jewelass_01", "u_m_m_jewelsec_01", "u_m_m_jewelthief", 
+	"u_m_y_militarybum", "u_f_y_mistress", "u_f_o_moviestar", "u_m_y_paparazzi", "u_m_y_party_01", "u_m_m_partytarget", "u_f_y_princess", "u_m_y_prisoner_01",
+	"u_m_y_proldriver_01", "u_f_o_prolhost_01", "u_m_m_prolsec_01", "u_f_m_promourn_01", "u_m_m_promourn_01", "u_m_m_rivalpap", "u_m_y_sbike",
+	"u_m_m_spyactor", "u_f_y_spyactress", "u_m_y_staggrm_01", "u_m_o_taphillbilly", "u_m_y_tattoo_01", "u_m_o_tramp_01" },
+
+	{ "Unique", "Abner Fitch, Theodore Bickford", "Al Di Napoli", "Anton Beaudelaire", "Chip, John Cohn", "Com Jane", "Racist Uncle Sam, Griff", 
+	"Guido", "Impotent Rage", "Jesus, Jesse", "Justin", "Mani, Mariachi", "Mark Fostenburg", "Miranda Cowan", "Pogo The Monkey", "Poppy Mitchell",
+	"Space Rangers (Republican)", "Willy Fist", "Zombie", "Babyd", "Bankman", "Bay Gor", "Bike Hire", "Biker Chic", "Burger Drug", "Corpse Middle",
+	"Corpse Young 1", "Corpse Young 2", "Cyclist", "FIB Architect", "FIB Mugger", "Film Director", "Fin Guru", "Glenstank", "Gunvend", "Hippie", 
+	"Hot Posh", "Jewel Assistance", "Jewel Security", "Jewel Thief", "Military Bum", "Mistress", "Movie Star", "Paparazzi", "Party", "Party Target",
+	"Princess", "Prisoner", "Prologue Driver", "Prologue Host", "Prologue L Security", "Prologue Mourn", "Prologue Mourn", "Rival Pap", "S Bike", 
+	"Spy Actor", "Spy Actress", "Staggrm", "Tap Hillbilly", "Tattoo", "Tramp"},
+
+	// 16 Popular
+	{ "_popular", "a_f_y_topless_01", "u_m_y_rsranger_01", "u_m_m_jesus_01" },
+	{ "Popular", "Topless", "Space Rangers (Republican)", "Jesus, Jesse" }
 };
 
-static LPCSTR pedModelNames[69][10] = {
-	{ "MICHAEL", "FRANKLIN", "TREVOR", "BOAR", "CHIMP", "COW", "COYOTE", "DEER", "FISH", "HEN" },
-	{ "CAT", "HAWK", "CORMORANT", "CROW", "DOLPHIN", "HUMPBACK", "WHALE", "PIGEON", "SEAGULL", "SHARKHAMMER" },
-	{ "PIG", "RAT", "RHESUS", "CHOP", "HUSKY", "MTLION", "RETRIEVER", "SHARKTIGER", "SHEPHERD", "ALIEN" },
-	{ "BEACH", "BEVHILLS", "BEVHILLS", "BODYBUILD", "BUSINESS", "DOWNTOWN", "EASTSA", "EASTSA", "FATBLA", "FATCULT" },
-	{ "FATWHITE", "KTOWN", "KTOWN", "PROLHOST", "SALTON", "SKIDROW", "SOUCENTMC", "SOUCENT", "SOUCENT", "TOURIST" },
-	{ "TRAMPBEAC", "TRAMP", "GENSTREET", "INDIAN", "KTOWN", "SALTON", "SOUCENT", "SOUCENT", "BEACH", "BEVHILLS" },
-	{ "BEVHILLS", "BEVHILLS", "BEVHILLS", "BUSINESS", "BUSINESS", "BUSINESS", "BUSINESS", "EASTSA", "EASTSA", "EASTSA" },
-	{ "EPSILON", "FITNESS", "FITNESS", "GENHOT", "GOLFER", "HIKER", "HIPPIE", "HIPSTER", "HIPSTER", "HIPSTER" },
-	{ "HIPSTER", "INDIAN", "JUGGALO", "RUNNER", "RURMETH", "SCDRESSY", "SKATER", "SOUCENT", "SOUCENT", "SOUCENT" },
-	{ "TENNIS", "TOPLESS", "TOURIST", "TOURIST", "VINEWOOD", "VINEWOOD", "VINEWOOD", "VINEWOOD", "YOGA", "ACULT" },
-	{ "AFRIAMER", "BEACH", "BEACH", "BEVHILLS", "BEVHILLS", "BUSINESS", "EASTSA", "EASTSA", "FARMER", "FATLATIN" },
-	{ "GENFAT", "GENFAT", "GOLFER", "HASJEW", "HILLBILLY", "HILLBILLY", "INDIAN", "KTOWN", "MALIBU", "MEXCNTRY" },
-	{ "MEXLABOR", "OG_BOSS", "PAPARAZZI", "POLYNESIAN", "PROLHOST", "RURMETH", "SALTON", "SALTON", "SALTON", "SALTON" },
-	{ "SKATER", "SKIDROW", "SOCENLAT", "SOUCENT", "SOUCENT", "SOUCENT", "SOUCENT", "STLAT", "TENNIS", "TOURIST" },
-	{ "TRAMPBEAC", "TRAMP", "TRANVEST", "TRANVEST", "ACULT", "ACULT", "BEACH", "GENSTREET", "KTOWN", "SALTON" },
-	{ "SOUCENT", "SOUCENT", "SOUCENT", "TRAMP", "ACULT", "ACULT", "BEACHVESP", "BEACHVESP", "BEACH", "BEACH" },
-	{ "BEACH", "BEVHILLS", "BEVHILLS", "BREAKDANCE", "BUSICAS", "BUSINESS", "BUSINESS", "BUSINESS", "CYCLIST", "DHILL" },
-	{ "DOWNTOWN", "EASTSA", "EASTSA", "EPSILON", "EPSILON", "GAY", "GAY", "GENSTREET", "GENSTREET", "GOLFER" },
-	{ "HASJEW", "HIKER", "HIPPY", "HIPSTER", "HIPSTER", "HIPSTER", "INDIAN", "JETSKI", "JUGGALO", "KTOWN" },
-	{ "KTOWN", "LATINO", "METHHEAD", "MEXTHUG", "MOTOX", "MOTOX", "MUSCLBEAC", "MUSCLBEAC", "POLYNESIAN", "ROADCYC" },
-	{ "RUNNER", "RUNNER", "SALTON", "SKATER", "SKATER", "SOUCENT", "SOUCENT", "SOUCENT", "SOUCENT", "STBLA" },
-	{ "STBLA", "STLAT", "STWHI", "STWHI", "SUNBATHE", "SURFER", "VINDOUCHE", "VINEWOOD", "VINEWOOD", "VINEWOOD" },
-	{ "VINEWOOD", "YOGA", "PROLDRIVER", "RSRANGER", "SBIKE", "STAGGRM", "TATTOO", "ABIGAIL", "ANITA", "ANTON" },
-	{ "BALLASOG", "BRIDE", "BURGERDRUG", "CAR3GUY1", "CAR3GUY2", "CHEF", "CHIN_GOON", "CLETUS", "COP", "CUSTOMER" },
-	{ "DENISE_FRIEND", "FOS_REP", "G", "GROOM", "DLR", "HAO", "HUGH", "IMRAN", "JANITOR", "MAUDE" },
-	{ "MWEATHER", "ORTEGA", "OSCAR", "PORNDUDES", "PORNDUDES_P", "PROLOGUEDRIVER", "PROLSEC", "GANG", "HIC", "HIPSTER" },
-	{ "MARINE", "MEX", "REPORTER", "ROCCOPELOSI", "SCREEN_WRITER", "STRIPPER", "STRIPPER", "TONYA", "TRAFFICWARDEN", "AMANDATOWNLEY" },
-	{ "ANDREAS", "ASHLEY", "BANKMAN", "BARRY", "BARRY_P", "BEVERLY", "BEVERLY_P", "BRAD", "BRADCADAVER", "CARBUYER" },
-	{ "CASEY", "CHENGSR", "CHRISFORMAGE", "CLAY", "DALE", "DAVENORTON", "DEBRA", "DENISE", "DEVIN", "DOM" },
-	{ "DREYFUSS", "DRFRIEDLANDER", "FABIEN", "FBISUIT", "FLOYD", "GUADALOPE", "GURK", "HUNTER", "JANET", "JEWELASS" },
-	{ "JIMMYBOSTON", "JIMMYDISANTO", "JOEMINUTEMAN", "JOHNNYKLEBITZ", "JOSEF", "JOSH", "LAMARDAVIS", "LAZLOW", "LESTERCREST", "LIFEINVAD" },
-	{ "MAGENTA", "MANUEL", "MARNIE", "MARTINMADRAZO", "MARYANN", "MICHELLE", "MILTON", "MOLLY", "MOVPREMF", "MOVPREMMALE" },
-	{ "MRK", "MRSPHILLIPS", "MRS_THORNHILL", "NATALIA", "NERVOUSRON", "NIGEL", "OLD_MAN1A", "OLD_MAN2", "OMEGA", "ORLEANS" },
-	{ "PAPER", "PAPER_P", "PATRICIA", "PRIEST", "PROLSEC", "RUSSIANDRUNK", "SIEMONYETARIAN", "SOLOMON", "STEVEHAINS", "STRETCH" },
-	{ "TANISHA", "TAOCHENG", "TAOSTRANSLATOR", "TENNISCOACH", "TERRY", "TOM", "TOMEPSILON", "TRACYDISANTO", "WADE", "ZIMBOR" },
-	{ "BALLAS", "FAMILIES", "LOST", "VAGOS", "ARMBOSS", "ARMGOON", "ARMLIEUT", "CHEMWORK", "CHEMWORK_P", "CHIBOSS" },
-	{ "CHIBOSS_P", "CHICOLD", "CHICOLD_P", "CHIGOON", "CHIGOON_P", "CHIGOON", "KORBOSS", "MEXBOSS", "MEXBOSS", "ARMGOON" },
-	{ "AZTECA", "BALLAEAST", "BALLAORIG", "BALLASOUT", "FAMCA", "FAMDNF", "FAMFOR", "KOREAN", "KOREAN", "KORLIEUT" },
-	{ "LOST", "LOST", "LOST", "MEXGANG", "MEXGOON", "MEXGOON", "MEXGOON", "MEXGOON_P", "POLOGOON", "POLOGOON_P" },
-	{ "POLOGOON", "POLOGOON_P", "SALVABOSS", "SALVAGOON", "SALVAGOON", "SALVAGOON", "SALVAGOON_P", "STRPUNK", "STRPUNK", "HC_DRIVER" },
-	{ "HC_GUNMAN", "HC_HACKER", "ABIGAIL", "AMANDATOWNLEY", "ANDREAS", "ASHLEY", "BALLASOG", "BANKMAN", "BARRY", "BARRY_P" },
-	{ "BESTMEN", "BEVERLY", "BEVERLY_P", "BRAD", "BRIDE", "CAR3GUY1", "CAR3GUY2", "CASEY", "CHEF", "CHENGSR" },
-	{ "CHRISFORMAGE", "CLAY", "CLAYPAIN", "CLETUS", "DALE", "DAVENORTON", "DENISE", "DEVIN", "DOM", "DREYFUSS" },
-	{ "DRFRIEDLANDER", "FABIEN", "FBISUIT", "FLOYD", "GROOM", "HAO", "HUNTER", "JANET", "JAY_NORRIS", "JEWELASS" },
-	{ "JIMMYBOSTON", "JIMMYDISANTO", "JOEMINUTEMAN", "JOHNNYKLEBITZ", "JOSEF", "JOSH", "KERRYMCINTOSH", "LAMARDAVIS", "LAZLOW", "LESTERCREST" },
-	{ "LIFEINVAD", "LIFEINVAD", "MAGENTA", "MANUEL", "MARNIE", "MARYANN", "MAUDE", "MICHELLE", "MILTON", "MOLLY" },
-	{ "MRK", "MRSPHILLIPS", "MRS_THORNHILL", "NATALIA", "NERVOUSRON", "NIGEL", "OLD_MAN1A", "OLD_MAN2", "OMEGA", "ONEIL" },
-	{ "ORLEANS", "ORTEGA", "PAPER", "PATRICIA", "PRIEST", "PROLSEC", "GANG", "HIC", "HIPSTER", "MEX" },
-	{ "ROCCOPELOSI", "RUSSIANDRUNK", "SCREEN_WRITER", "SIEMONYETARIAN", "SOLOMON", "STEVEHAINS", "STRETCH", "TALINA", "TANISHA", "TAOCHENG" },
-	{ "TAOSTRANSLATOR", "TAOSTRANSLATOR_P", "TENNISCOACH", "TERRY", "TOMEPSILON", "TONYA", "TRACYDISANTO", "TRAFFICWARDEN", "TYLERDIX", "WADE" },
-	{ "ZIMBOR", "DEADHOOKER", "FREEMODE", "MISTY", "STRIPPERLITE", "PROS", "MP_HEADTARGETS", "CLAUDE", "EXARMY", "FAMDD" },
-	{ "FIBSEC", "FREEMODE", "MARSTON", "NIKO", "SHOPKEEP", "ARMOURED", "NONE", "NONE", "NONE", "NONE" },
-	{ "NONE", "FEMBARBER", "MAID", "SHOP_HIGH", "SWEATSHOP", "AIRHOSTESS", "BARTENDER", "BAYWATCH", "COP", "FACTORY" },
-	{ "HOOKER", "HOOKER", "HOOKER", "MIGRANT", "MOVPREM", "RANGER", "SCRUBS", "SHERIFF", "SHOP_LOW", "SHOP_MID" },
-	{ "STRIPPERLITE", "STRIPPER", "STRIPPER", "SWEATSHOP", "AMMUCOUNTRY", "ARMOURED", "ARMOURED", "AUTOSHOP", "AUTOSHOP", "BOUNCER" },
-	{ "CHEMSEC", "CIASEC", "CNTRYBAR", "DOCKWORK", "DOCTOR", "FIBOFFICE", "FIBOFFICE", "GAFFER", "GARDENER", "GENTRANSPORT" },
-	{ "HAIRDRESS", "HIGHSEC", "HIGHSEC", "JANITOR", "LATHANDY", "LIFEINVAD", "LINECOOK", "LSMETRO", "MARIACHI", "MARINE" },
-	{ "MARINE", "MIGRANT", "ZOMBIE", "MOVPREM", "MOVSPACE", "PARAMEDIC", "PILOT", "PILOT", "POSTAL", "POSTAL" },
-	{ "PRISGUARD", "SCIENTIST", "SECURITY", "SNOWCOP", "STRPERF", "STRPREACH", "STRVEND", "TRUCKER", "UPS", "UPS" },
-	{ "BUSKER", "AIRWORKER", "AMMUCITY", "ARMYMECH", "AUTOPSY", "BARMAN", "BAYWATCH", "BLACKOPS", "BLACKOPS", "BUSBOY" },
-	{ "CHEF", "CLOWN", "CONSTRUCT", "CONSTRUCT", "COP", "DEALER", "DEVINSEC", "DOCKWORK", "DOORMAN", "DWSERVICE" },
-	{ "DWSERVICE", "FACTORY", "FIREMAN", "GARBAGE", "GRIP", "HWAYCOP", "MARINE", "MARINE", "MARINE", "MIME" },
-	{ "PESTCONT", "PILOT", "PRISMUSCL", "PRISONER", "RANGER", "ROBBER", "SHERIFF", "SHOP_MASK", "STRVEND", "SWAT" },
-	{ "USCG", "VALET", "WAITER", "WINCLEAN", "XMECH", "XMECH", "CORPSE", "MIRANDA", "PROMOURN", "MOVIESTAR" },
-	{ "PROLHOST", "BIKERCHIC", "COMJANE", "CORPSE", "CORPSE", "HOTPOSH", "JEWELASS", "MISTRESS", "POPPYMICH", "PRINCESS" },
-	{ "SPYACTRESS", "ALDINAPOLI", "BANKMAN", "BIKEHIRE", "FIBARCHITECT", "FILMDIRECTOR", "GLENSTANK", "GRIFF", "JESUS", "JEWELSEC" },
-	{ "JEWELTHIEF", "MARKFOST", "PARTYTARGET", "PROLSEC", "PROMOURN", "RIVALPAP", "SPYACTOR", "WILLYFIST", "FINGURU", "TAPHILLBILLY" },
-	{ "TRAMP", "ABNER", "ANTONB", "BABYD", "BAYGOR", "BURGERDRUG", "CHIP", "CYCLIST", "FIBMUGGER", "GUIDO" },
-	{ "GUNVEND", "HIPPIE", "IMPORAGE", "JUSTIN", "MANI", "MILITARYBUM", "PAPARAZZI", "PARTY", "POGO", "PRISONER" }
+
+std::vector< std::vector <LPCSTR> > vehicleModels = {
+	// Super
+	{ "Super",
+		"Adder", "Bullet", "Cheetah", "Entityxf", "Infernus", "Turismor", "Vacca", "Voltic", "Zentorno" },
+
+	// Sports
+	{ "Sports",
+		"Alpha", "Banshee", "Buffalo", "Buffalo2", "Buffalo3", "Carbonizzare", "Comet2", "Coquette", "Elegy2", "Feltzer2",
+	"Furoregt", "Fusilade", "Futo", "Jester", "Jester2", "Khamelion", "Kuruma", "Kuruma2", "Massacro", "Massacro2",
+	"Ninef", "Ninef2", "Penumbra", "Rapidgt", "Rapidgt2", "Sultan", "Surano" },
+
+	// Sports Classic
+	{ "Sports Classic", 
+	"Btype", "Casco", "Coquette2", "Jb700", "Manana", "Monroe", "Peyote", "Pigalle", "Stinger", "Stingergt",
+	"Tornado", "Tornado2", "Tornado3", "Tornado4", "Ztype" },
+
+	// Bicycles
+	{ "Bicycles", 
+	"Bmx", "Cruiser", "Fixter", "Scorcher", "Tribike", "Tribike2", "Tribike3" },
+
+	// Muscles
+	{ "Muscles",
+	"Blade", "Buccaneer", "Dominator", "Dominator2", "Dukes", "Dukes2", "Gauntlet", "Gauntlet2", "Hotknife", "Phoenix",
+	"Picador", "Ratloader", "Ratloader2", "Ruiner", "Sabregt", "Slamvan", "Slamvan2", "Stalion", "Stalion2", "Vigero",
+	"Voodoo2" },
+
+	// Coupes
+	{ "Coupes",
+	"Cogcabrio", "Exemplar", "F620", "Felon", "Felon2", "Jackal", "Oracle", "Oracle2", "Sentinel", "Sentinel2",
+	"Zion", "Zion2" },
+
+	// Sedans
+	{ "Sedans",
+	"Asea", "Asea2", "Asterope", "Emperor", "Emperor2", "Emperor3", "Fugitive", "Glendale", "Ingot", "Intruder",
+	"Premier", "Primo", "Regina", "Romero", "Schafter2", "Schwarzer", "Stanier", "Stratum", "Stretch", "Superd",
+	"Surge", "Tailgater", "Warrener", "Washington" },
+
+	// Compacts
+	{ "Compacts",
+	"Blista", "Blista2", "Blista3", "Dilettante", "Dilettante2", "Issi2", "Panto", "Prairie", "Rhapsody" },
+
+	// SUVs
+	{ "SUVs",
+	"Baller", "Baller2", "Bjxl", "Cavalcade", "Cavalcade2", "Dubsta", "Dubsta2", "Fq2", "Granger", "Gresley",
+	"Habanero", "Huntley", "Landstalker", "Mesa", "Mesa2", "Mesa3", "Patriot", "Radi", "Rocoto", "Seminole",
+	"Serrano" },
+
+	// Vans
+	{ "Vans",
+	"Bison", "Bison2", "Bison3", "Bobcatxl", "Boxville", "Boxville2", "Boxville3", "Boxville4", "Burrito", "Burrito2",
+	"Burrito3", "Burrito4", "Burrito5", "Camper", "Gburrito", "Journey", "Minivan", "Paradise", "Pony", "Pony2",
+	"Rumpo", "Rumpo2", "Speedo", "Speedo2", "Surfer", "Surfer2", "Taco", "Youga" },
+
+	// Not Drivable
+	{ "Not Drivable",
+	"Tankercar", "Cablecar", "Metrotrain", "Freight", "Freightcar", "Freightcont1", "Freightcont2", "Freightgrain", "Freighttrailer", "Proptrailer" },
+
+	// Components
+	{ "Components",
+	"Armytanker", "Armytrailer", "Armytrailer2", "Boattrailer", "Docktrailer", "Raketrailer", "Tanker", "Tanker2", "Tr2", "Tr3", "Tr4", "Trailerlogs", "Trailers",
+	"Trailers2", "Trailers3", "Trailersmall", "Trflat", "Tvtrailer", "Baletrailer", "Graintrailer" },
+
+	// Commercials
+	{ "Commercials",
+	"Benson", "Biff", "Hauler", "Mule", "Mule2", "Packer", "Phantom", "Pounder", "Stockade", "Stockade3" },
+
+	// Services
+	{ "Services",
+	"Airbus", "Bus", "Coach", "Pbus", "Rentalbus", "Taxi", "Tourbus", "Trash", "Trash2" },
+
+	// Utilities
+	{ "Utilities",
+	"Airtug", "Caddy", "Caddy2", "Docktug", "Forklift", "Mower", "Ripley", "Sadler", "Sadler2", "Scrap",
+	"Towtruck", "Towtruck2", "Tractor", "Tractor2", "Tractor3", "Utillitruck", "Utillitruck2", "Utillitruck3" },
+
+	// Industrials
+	{ "Industrials",
+	"Bulldozer", "Cutter", "Dump", "Flatbed", "Handler", "Mixer", "Mixer2", "Rubble", "Tiptruck", "Tiptruck2" },
+
+	// Emergency
+	{ "Emergency",
+	"Ambulance", "Fbi", "Fbi2", "Firetruk", "Lguard", "Police", "Police2", "Police3", "Police4", "Policeb",
+	"Policeold1", "Policeold2", "Policet", "Pranger", "Riot", "Sheriff", "Sheriff2" },
+
+	// Off-Roads
+	{ "Off-Roads",
+	"Bfinjection", "Bifta", "Blazer", "Blazer2", "Blazer3", "Bodhi2", "Dloader", "Dubsta3", "Dune", "Dune2",
+	"Guardian", "Insurgent", "Insurgent2", "Kalahari", "Marshall", "Monster", "Rancherxl", "Rancherxl2", "Rebel", "Rebel2",
+	"Sandking", "Sandking2", "Technical" },
+
+	// Military
+	{ "Military",
+	"Barracks", "Barracks2", "Barracks3", "Crusader", "Rhino" },
+
+	// Watercrafts
+	{ "Watercrafts",
+	"Dinghy", "Dinghy2", "Dinghy3", "Jetmax", "Marquis", "Predator", "Seashark", "Seashark2", "Speeder", "Squalo",
+	"Submersible", "Submersible2", "Suntrap", "Tropic" },
+
+	// Aircrafts
+	{ "Aircrafts",
+	"Besra", "Blimp", "Blimp2", "Cargoplane", "Cuban800", "Dodo", "Duster", "Hydra", "Jet", "Lazer",
+	"Luxor", "Mammatus", "Miljet", "Shamal", "Stunt", "Titan", "Velum", "Velum2", "Vestra" },
+
+	// Helicopter
+	{ "Helicopters",
+	"Annihilator", "Buzzard", "Buzzard2", "Cargobob", "Cargobob2", "Cargobob3", "Frogger", "Frogger2", "Maverick",
+	"Polmav", "Savage", "Skylift", "Swift", "Valkyrie" },
+
+	// ILL Goth
+	{ "NEW",
+	"0x4019CB4C", "0xB79F589E", "0xA29D6D10", "0x767164D6", "0xE2504942", "0x5E4327C8" }
+
 };
 
-static LPCSTR vehicleModels[35][10] = {
-	{ "NINEF", "NINEF2", "BLISTA", "ASEA", "ASEA2", "BOATTRAILER", "BUS", "ARMYTANKER", "ARMYTRAILER", "ARMYTRAILER2" },
-	{ "SUNTRAP", "COACH", "AIRBUS", "ASTEROPE", "AIRTUG", "AMBULANCE", "BARRACKS", "BARRACKS2", "BALLER", "BALLER2" },
-	{ "BJXL", "BANSHEE", "BENSON", "BFINJECTION", "BIFF", "BLAZER", "BLAZER2", "BLAZER3", "BISON", "BISON2" },
-	{ "BISON3", "BOXVILLE", "BOXVILLE2", "BOXVILLE3", "BOBCATXL", "BODHI2", "BUCCANEER", "BUFFALO", "BUFFALO2", "BULLDOZER" },
-	{ "BULLET", "BLIMP", "BURRITO", "BURRITO2", "BURRITO3", "BURRITO4", "BURRITO5", "CAVALCADE", "CAVALCADE2", "POLICET" },
-	{ "GBURRITO", "CABLECAR", "CADDY", "CADDY2", "CAMPER", "CARBONIZZARE", "CHEETAH", "COMET2", "COGCABRIO", "COQUETTE" },
-	{ "CUTTER", "GRESLEY", "DILETTANTE", "DILETTANTE2", "DUNE", "DUNE2", "HOTKNIFE", "DLOADER", "DUBSTA", "DUBSTA2" },
-	{ "DUMP", "RUBBLE", "DOCKTUG", "DOMINATOR", "EMPEROR", "EMPEROR2", "EMPEROR3", "ENTITYXF", "EXEMPLAR", "ELEGY2" },
-	{ "F620", "FBI", "FBI2", "FELON", "FELON2", "FELTZER2", "FIRETRUK", "FLATBED", "FORKLIFT", "FQ2" },
-	{ "FUSILADE", "FUGITIVE", "FUTO", "GRANGER", "GAUNTLET", "HABANERO", "HAULER", "HANDLER", "INFERNUS", "INGOT" },
-	{ "INTRUDER", "ISSI2", "JACKAL", "JOURNEY", "JB700", "KHAMELION", "LANDSTALKER", "LGUARD", "MANANA", "MESA" },
-	{ "MESA2", "MESA3", "CRUSADER", "MINIVAN", "MIXER", "MIXER2", "MONROE", "MOWER", "MULE", "MULE2" },
-	{ "ORACLE", "ORACLE2", "PACKER", "PATRIOT", "PBUS", "PENUMBRA", "PEYOTE", "PHANTOM", "PHOENIX", "PICADOR" },
-	{ "POUNDER", "POLICE", "POLICE4", "POLICE2", "POLICE3", "POLICEOLD1", "POLICEOLD2", "PONY", "PONY2", "PRAIRIE" },
-	{ "PRANGER", "PREMIER", "PRIMO", "PROPTRAILER", "RANCHERXL", "RANCHERXL2", "RAPIDGT", "RAPIDGT2", "RADI", "RATLOADER" },
-	{ "REBEL", "REGINA", "REBEL2", "RENTALBUS", "RUINER", "RUMPO", "RUMPO2", "RHINO", "RIOT", "RIPLEY" },
-	{ "ROCOTO", "ROMERO", "SABREGT", "SADLER", "SADLER2", "SANDKING", "SANDKING2", "SCHAFTER2", "SCHWARZER", "SCRAP" },
-	{ "SEMINOLE", "SENTINEL", "SENTINEL2", "ZION", "ZION2", "SERRANO", "SHERIFF", "SHERIFF2", "SPEEDO", "SPEEDO2" },
-	{ "STANIER", "STINGER", "STINGERGT", "STOCKADE", "STOCKADE3", "STRATUM", "SULTAN", "SUPERD", "SURANO", "SURFER" },
-	{ "SURFER2", "SURGE", "TACO", "TAILGATER", "TAXI", "TRASH", "TRACTOR", "TRACTOR2", "TRACTOR3", "GRAINTRAILER" },
-	{ "BALETRAILER", "TIPTRUCK", "TIPTRUCK2", "TORNADO", "TORNADO2", "TORNADO3", "TORNADO4", "TOURBUS", "TOWTRUCK", "TOWTRUCK2" },
-	{ "UTILLITRUCK", "UTILLITRUCK2", "UTILLITRUCK3", "VOODOO2", "WASHINGTON", "STRETCH", "YOUGA", "ZTYPE", "SANCHEZ", "SANCHEZ2" },
-	{ "SCORCHER", "TRIBIKE", "TRIBIKE2", "TRIBIKE3", "FIXTER", "CRUISER", "BMX", "POLICEB", "AKUMA", "CARBONRS" },
-	{ "BAGGER", "BATI", "BATI2", "RUFFIAN", "DAEMON", "DOUBLE", "PCJ", "VADER", "VIGERO", "FAGGIO2" },
-	{ "HEXER", "ANNIHILATOR", "BUZZARD", "BUZZARD2", "CARGOBOB", "CARGOBOB2", "CARGOBOB3", "SKYLIFT", "POLMAV", "MAVERICK" },
-	{ "NEMESIS", "FROGGER", "FROGGER2", "CUBAN800", "DUSTER", "STUNT", "MAMMATUS", "JET", "SHAMAL", "LUXOR" },
-	{ "TITAN", "LAZER", "CARGOPLANE", "SQUALO", "MARQUIS", "DINGHY", "DINGHY2", "JETMAX", "PREDATOR", "TROPIC" },
-	{ "SEASHARK", "SEASHARK2", "SUBMERSIBLE", "TRAILERS", "TRAILERS2", "TRAILERS3", "TVTRAILER", "RAKETRAILER", "TANKER", "TRAILERLOGS" },
-	{ "TR2", "TR3", "TR4", "TRFLAT", "TRAILERSMALL", "VELUM", "ADDER", "VOLTIC", "VACCA", "BIFTA" },
-	{ "SPEEDER", "PARADISE", "KALAHARI", "JESTER", "TURISMOR", "VESTRA", "ALPHA", "HUNTLEY", "THRUST", "MASSACRO" },
-	{ "MASSACRO2", "ZENTORNO", "BLADE", "GLENDALE", "PANTO", "PIGALLE", "WARRENER", "RHAPSODY", "DUBSTA3", "MONSTER" },
-	{ "SOVEREIGN", "INNOVATION", "HAKUCHOU", "FUROREGT", "MILJET", "COQUETTE2", "BTYPE", "BUFFALO3", "DOMINATOR2", "GAUNTLET2" },
-	{ "MARSHALL", "DUKES", "DUKES2", "STALION", "STALION2", "BLISTA2", "BLISTA3", "DODO", "SUBMERSIBLE2", "HYDRA" },
-	{ "INSURGENT", "INSURGENT2", "TECHNICAL", "SAVAGE", "VALKYRIE", "KURUMA", "KURUMA2", "JESTER2", "CASCO", "VELUM2" },
-	{ "GUARDIAN", "ENDURO", "LECTRO", "SLAMVAN", "SLAMVAN2", "RATLOADER2", "", "", "", "" }
+vector <LPCSTR> weaponOnlineNames_new = {
+	"WEAPON_PISTOL", "WEAPON_COMBATPISTOL", "WEAPON_APPISTOL", "WEAPON_PISTOL50", "WEAPON_SNSPISTOL", "WEAPON_HEAVYPISTOL", "WEAPON_VINTAGEPISTOL", "WEAPON_FLAREGUN",
+	"WEAPON_MICROSMG", "WEAPON_SMG", "WEAPON_ASSAULTSMG",
+	"WEAPON_MG", "WEAPON_COMBATMG",
+	"WEAPON_ASSAULTRIFLE", "WEAPON_CARBINERIFLE", "WEAPON_ADVANCEDRIFLE", "WEAPON_SPECIALCARBINE", "WEAPON_BULLPUPRIFLE",
+	"WEAPON_SNIPERRIFLE", "WEAPON_HEAVYSNIPER", "WEAPON_MARKSMANRIFLE",
+	"WEAPON_KNIFE", "WEAPON_NIGHTSTICK", "WEAPON_HAMMER", "WEAPON_BAT", "WEAPON_GOLFCLUB", "WEAPON_CROWBAR", "WEAPON_DAGGER", "WEAPON_HATCHET",
+	"WEAPON_PUMPSHOTGUN", "WEAPON_SAWNOFFSHOTGUN", "WEAPON_ASSAULTSHOTGUN", "WEAPON_BULLPUPSHOTGUN", "WEAPON_HEAVYSHOTGUN",
+	"WEAPON_GRENADELAUNCHER", "WEAPON_RPG", "WEAPON_MINIGUN", "WEAPON_HOMINGLAUNCHER",
+	"WEAPON_GRENADE", "WEAPON_STICKYBOMB", "WEAPON_SMOKEGRENADE", "WEAPON_MOLOTOV", "WEAPON_PETROLCAN", "WEAPON_PROXMINE"
 };
 
 static LPCSTR weaponOnlineNames[] = {
@@ -504,16 +566,29 @@ static LPCSTR weaponRestrictedNames[] = {
 	"WEAPON_STUNGUN",
 	"WEAPON_BZGAS", "WEAPON_SNOWBALL", "WEAPON_FIREEXTINGUISHER", "WEAPON_BALL", "WEAPON_FLARE",
 	"WEAPON_MUSKET", "WEAPON_GUSENBERG",
-	"WEAPON_RAILGUN", "WEAPON_FIREWORK",
-	"WEAPON_HANDCUFFS"
+	"WEAPON_RAILGUN", "WEAPON_FIREWORK"
 };
 
-void give_weapons_set_to_ped(Ped playerPed, LPCSTR weaponSet[], int arrayByteSize, int ammoSize = 1000) {
+void give_weaponsSets_to_ped(Ped playerPed, LPCSTR weaponSet[], int arrayByteSize, int ammoSize = 1000) {
+	output_writeToLog("give_weaponsSets_to_ped: Processing");
 
 	int weaponSetSize = arrayByteSize / sizeof(LPCSTR);
 	for (int i = 0; i < weaponSetSize; i++)
 		WEAPON::GIVE_DELAYED_WEAPON_TO_PED(playerPed, GAMEPLAY::GET_HASH_KEY((char *)weaponSet[i]), ammoSize, 0);
+
+	output_writeToLog("give_weaponsSets_to_ped: Done");
 }
+void give_weaponsSets_to_ped(Ped playerPed, vector <LPCSTR> &weaponSet, int ammoSize = 1000) {
+	output_writeToLog("give_weaponsSets_to_ped: Processing");
+
+	int weaponSetSize = (int) weaponSet.size();
+	for (int i = 0; i < weaponSetSize; i++)
+		WEAPON::GIVE_DELAYED_WEAPON_TO_PED(playerPed, GAMEPLAY::GET_HASH_KEY((char *)weaponSet[i]), ammoSize, 0);
+
+	output_writeToLog("give_weaponsSets_to_ped: Done");
+}
+
+
 void teleport_to_nearest_vehicle(){
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
 	Vector3 coord = ENTITY::GET_ENTITY_COORDS(playerPed, true);
@@ -522,22 +597,134 @@ void teleport_to_nearest_vehicle(){
 	PED::SET_PED_INTO_VEHICLE(playerPed, VehicleHandle, -1);
 };
 
-bool bMonitorPlayerRespawn = false;
-
 bool is_ped_default_player(Hash model){
-	for (int i = 0; i < 3; i++) {
-		if (GAMEPLAY::GET_HASH_KEY((char *)defaultModels[i]) == model) {
+
+	output_writeToLog("is_ped_default_player: Processing");
+
+	int startIndex, endIndex;
+
+	if (NETWORK::NETWORK_IS_IN_SESSION()) { // GTA MP
+		startIndex = 1;
+		endIndex = 2;
+	}
+	else { // GTA SP
+		startIndex = 3;
+		endIndex = 5;
+	}
+	for (int i = startIndex; i <= endIndex; i++) {
+		if (GAMEPLAY::GET_HASH_KEY((char *)pedModels_new[0][i]) == model) {
+			output_writeToLog("is_ped_default_player: Done > true");
 			return true;
 		}
 	}
+	output_writeToLog("is_ped_default_player: Done > false");
 	return false;
 }
 bool is_ped_default_player(Ped playerPed){
 	return is_ped_default_player(ENTITY::GET_ENTITY_MODEL(playerPed));
 }
+int is_ped_animal(Hash model) {
+		for (int i = 1; i < pedModels_new[2].size(); i++) {
+		if (GAMEPLAY::GET_HASH_KEY((char *)pedModels_new[2][i]) == model) {
+			if (i < 16) return 1;		// Land animal
+			else if (i > 19) return 3;  // Aquatics
+			else return 2;				// Birds
+		}
+	}
+	return 0;
+}
+int is_ped_animal(Ped playerPed) {
+	return is_ped_animal(ENTITY::GET_ENTITY_MODEL(playerPed));
+}
 
-void change_player_model(Ped playerPed, Hash model, bool bRestore = false, bool bGiveWeapon = true){	
+void loading_message_show(char* message = "loading") {
+	display_message_caption(message, 0);
+	WAIT(0);
+}
+void loading_message_clear() {
+	display_message_caption("", 1);
+}
+
+void spawn_vehicle(DWORD model, bool bWrapInSpawned = featureVehWrapInSpawned) {
+	//common variable
+	Ped playerPed = PLAYER::PLAYER_PED_ID();
 	
+	if (STREAMING::IS_MODEL_IN_CDIMAGE(model) && STREAMING::IS_MODEL_A_VEHICLE(model)) {
+		STREAMING::REQUEST_MODEL(model);
+		while (!STREAMING::HAS_MODEL_LOADED(model))
+			loading_message_show();
+		loading_message_clear();
+
+		Vector3 coords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
+		
+		if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
+			Vehicle veh_pre = PED::GET_VEHICLE_PED_IS_USING(playerPed);
+			ENTITY::SET_ENTITY_AS_MISSION_ENTITY(veh_pre, true, false);
+			VEHICLE::DELETE_VEHICLE(&veh_pre);
+		}
+		
+		Vehicle veh = VEHICLE::CREATE_VEHICLE(model, coords.x, coords.y, coords.z, 0.0, 1, 1);
+		VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(veh);
+
+		if (bWrapInSpawned) {
+			ENTITY::SET_ENTITY_HEADING(veh, ENTITY::GET_ENTITY_HEADING(playerPed));
+			VEHICLE::SET_VEHICLE_ENGINE_ON(veh, true, true);
+			PED::SET_PED_INTO_VEHICLE(playerPed, veh, -1);
+		}
+
+		STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);
+		ENTITY::SET_VEHICLE_AS_NO_LONGER_NEEDED(&veh);
+	}
+}
+void spawn_vehicle(LPCSTR modelName, bool bWrapInSpawned = featureVehWrapInSpawned) {
+	if (modelName[0] == '0') {
+		spawn_vehicle(strtol(modelName, NULL, 0), bWrapInSpawned);
+	}
+	spawn_vehicle(GAMEPLAY::GET_HASH_KEY((char *)modelName), bWrapInSpawned);
+}
+
+bool bMonitorPlayerRespawn = false;
+
+void randomised_ped_components(Ped playerPed, int exStart = 7, int exEnd = 10, int inStart = 0, int inEnd = 12) {
+	// skip 7 to 10
+	int drawable, texture, drawableLim, textureLim;
+
+	output_writeToLog("randomised_ped_components: Processing");
+	for (int i = inStart; i < inEnd; i++) {
+		/*
+		if (i == exStart) {
+			i = exEnd;
+			continue;
+		}*/
+
+		drawableLim = PED::GET_NUMBER_OF_PED_DRAWABLE_VARIATIONS(playerPed, i);
+		output_writeToLog("randomised_ped_components: Drawable calculated: " + std::to_string(drawableLim));
+		drawable = rand() % (drawableLim + 1);
+		
+
+		textureLim = PED::GET_NUMBER_OF_PED_TEXTURE_VARIATIONS(playerPed, i, drawable);
+		output_writeToLog("randomised_ped_components: Texture calculated: " + std::to_string(textureLim));
+		texture = rand() % (textureLim + 1);
+		
+		
+		output_writeToLog("Drawable: " + std::to_string(drawable) + "/" + std::to_string(drawableLim) +
+			" with texture: " + std::to_string(texture) + "/" + std::to_string(textureLim));
+
+		if (PED::IS_PED_COMPONENT_VARIATION_VALID(playerPed, i, drawable, texture)) {
+			output_writeToLog("randomised_ped_components: Valid");
+			PED::SET_PED_COMPONENT_VARIATION(playerPed, i, drawable, texture, 0);
+			output_writeToLog("randomised_ped_components: SET");
+		}
+	}
+	output_writeToLog("randomised_ped_components: Done");
+}
+
+std::string gender = "male";
+
+void set_player_model(Ped playerPed, Hash model, bool bRestore = false, bool bGiveWeapon = true) {	
+	
+	output_writeToLog("set_player_model: " + std::to_string(model) + "Processing");
+
 	// Common variables
 	Ped playerPed_new;
 	bool isInVehicle = false;
@@ -558,79 +745,87 @@ void change_player_model(Ped playerPed, Hash model, bool bRestore = false, bool 
 
 		// Change model
 		STREAMING::REQUEST_MODEL(model);
-		while (!STREAMING::HAS_MODEL_LOADED(model))
-			WAIT(0);
-		
-		output_writeToLog("change_player_model: " + std::to_string(model) + " is loaded.");
+		while (!STREAMING::HAS_MODEL_LOADED(model)) {
+			loading_message_show();
+		}
+		loading_message_clear();
 		
 		PLAYER::SET_PLAYER_MODEL(PLAYER::PLAYER_ID(), model);
-
-		output_writeToLog("change_player_model: Player model is changed.");
-
 		playerPed_new = PLAYER::PLAYER_PED_ID();
 
 		PED::SET_PED_DEFAULT_COMPONENT_VARIATION(playerPed_new);
-		WAIT(100);
-		STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);
-		
-		if (!bRestore) {
-			if (isInVehicle) {
-				PED::SET_PED_INTO_VEHICLE(playerPed_new, drivingVeh, -1);
-				ENTITY::SET_ENTITY_COLLISION(PLAYER::PLAYER_PED_ID(), 1, 0);
-				output_writeToLog("change_player_model: Teleport to vehicle works!");
-			}
-			
-			// Randomise ped component
-			for (int i = 3; i < 12; i++) {
-				if (i == 7) { // skip 7 to 10
-					i = 10;
-					continue;
-				}
-				for (int j = 0; j < 100; j++) {				
-					int drawable = rand() % 10;
-					int texture = rand() % 10;
-					if (PED::IS_PED_COMPONENT_VARIATION_VALID(playerPed_new, i, drawable, texture)) {
-						PED::SET_PED_COMPONENT_VARIATION(playerPed_new, i, drawable, texture, 0);
-						break;
-					}
-				}
-			}
-		}
-		if (bGiveWeapon)
-			give_weapons_set_to_ped(playerPed_new, weaponOnlineNames, sizeof(weaponOnlineNames), 9000);
 
+		STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);
+
+		if (!bRestore) // Randomise ped component
+			randomised_ped_components(playerPed_new);
+		
+		if (isInVehicle)
+			PED::SET_PED_INTO_VEHICLE(playerPed_new, drivingVeh, -1);
+
+		if (bGiveWeapon)
+			give_weaponsSets_to_ped(playerPed_new, weaponOnlineNames_new, 6000);
 	}
 	else
 		output_writeToLog("ERROR change_player_model: " + std::to_string(model) + " doesn't exist.");
 
+	output_writeToLog("set_player_model: " + std::to_string(model) + "Done");
 }
-void change_player_model(Ped playerPed, char *modelName, bool bRestore = false) {
-	change_player_model(playerPed, GAMEPLAY::GET_HASH_KEY(modelName), bRestore);
+void set_player_model(Ped playerPed, char *modelName, bool bRestore = false, bool bGiveWeapon = true) {
+	set_player_model(playerPed, GAMEPLAY::GET_HASH_KEY(modelName), bRestore, bGiveWeapon);
 }
+void set_player_model(Ped playerPed, int indexType, int indexItem) {
+	bool bGiveWeapon = true;
+	char genderIndex = pedModels_new[indexType][indexItem][2];
+	char pedType = pedModels_new[indexType][indexItem][0];
+	char pedGender;
+
+	if (pedType == 'a' || pedType == 'g' || pedType == 's' || pedType == 'u') // a g s u
+		pedGender = pedModels_new[indexType][indexItem][2];
+	else if (pedType == 'i' || pedType == 'c')	// ig cs csb
+		pedGender = 'x';
+	else // mp player
+		pedGender = pedModels_new[indexType][indexItem][3];
+
+	if (pedGender == 'c')
+		bGiveWeapon = false;
+	else if (pedGender == 'm')
+		gender = "male";
+	else if (pedGender == 'f')
+		gender = "female";
+	else if (pedGender == 'x') // undefined
+		gender = "male";
+	else if (pedGender == 's' || pedGender == 'g' || pedGender == 'y')	// mp and player will enter here
+		gender = "male";
+
+	set_player_model(playerPed, (char*)pedModels_new[indexType][indexItem], false, bGiveWeapon);
+}
+
+// player model control, switching on normal ped model when needed	
 
 void player_respawn_check() {
 	// common variables
 	//Player player = PLAYER::PLAYER_ID();
+
+	output_writeToLog("player_respawn_check: enter");
 
 	// common variable
 	Ped pedChecking = PLAYER::PLAYER_PED_ID();
 
 	if (!ENTITY::DOES_ENTITY_EXIST(pedChecking)) return;
 
-	if (ENTITY::IS_ENTITY_DEAD(pedChecking) ||
-		PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), true)) {
-		output_writeToLog("player_respawn_check: Player is dead or arrested");
+	if (ENTITY::IS_ENTITY_DEAD(pedChecking) || PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), false)) {
 
 		Hash model_pre = ENTITY::GET_ENTITY_MODEL(pedChecking);
 		
 		if (!NETWORK::NETWORK_IS_IN_SESSION()) { // Singleplayer
-			
-			bool isDefaultPlayer = is_ped_default_player(model_pre);
 
-			if (isDefaultPlayer) {
+			bMonitorPlayerRespawn = !is_ped_default_player(model_pre);
+
+			if (!bMonitorPlayerRespawn) {
 				// wait until loading screen is over.
 				while (ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID()) ||
-					PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), true))
+					PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), false))
 					WAIT(0);
 				return;
 			}
@@ -639,22 +834,25 @@ void player_respawn_check() {
 				output_writeToLog("player_respawn_check: Not default player, restoration required.");
 
 				WAIT(2000);
-				change_player_model(pedChecking, "player_zero", true);
-
-				// wait until player is ressurected
-				output_writeToLog("player_respawn_check: Ressurecting.");
-				while (CAM::IS_GAMEPLAY_CAM_RENDERING())
-					WAIT(0); //Dying screen
-				
-				while (!CAM::IS_GAMEPLAY_CAM_RENDERING())
-					WAIT(0); //Resurrecting
+				set_player_model(pedChecking, "player_zero", true);
 			}
 		}
-		else // Multiplayer
-			WAIT(5000);
+
+		// entity is an animal, do not change back.
+		if (is_ped_animal(model_pre)) {
+			bMonitorPlayerRespawn = false;
+			return;
+		}
+
+		// wait until player is resurrected
+		output_writeToLog("player_respawn_check: Resurrecting.");
+		while (!CAM::IS_SCREEN_FADING_OUT()) WAIT(0);
+		while (CAM::IS_SCREEN_FADING_OUT()) WAIT(0);
+		while (CAM::IS_SCREEN_FADED_OUT()) WAIT(0);			// Wasted/Busted screen is gone.
+		while (!CAM::IS_GAMEPLAY_CAM_RENDERING()) WAIT(0);	// Resurrecting
 
 		// Change back
-		change_player_model(PLAYER::PLAYER_PED_ID(), model_pre);
+		set_player_model(PLAYER::PLAYER_PED_ID(), model_pre);
 		output_writeToLog("player_respawn_check: model_pre is changed back");
 	}
 }
@@ -681,7 +879,8 @@ void update_vehicle_guns()
 		{
 			WEAPON::REQUEST_WEAPON_ASSET(weaponAssetRocket, 31, 0);
 			while (!WEAPON::HAS_WEAPON_ASSET_LOADED(weaponAssetRocket))
-				WAIT(0);
+				loading_message_show();
+			loading_message_clear();
 		}
 
 		Vector3 coords0from = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(veh, -(v1.x + 0.25f), v1.y + 1.25f, 0.1);
@@ -701,8 +900,7 @@ void update_vehicle_guns()
 }
 
 // Updates all features that can be turned off by the game, being called each game frame
-void update_features()
-{
+void update_features() {
 	update_status_text();
 
 	update_vehicle_guns();
@@ -950,17 +1148,111 @@ void update_features()
 
 }
 
+
+
+
+
+
+
+
+//
+// UI Drawing
+// 
+
+void draw_rect(float A_0, float A_1, float A_2, float A_3, int A_4, int A_5, int A_6, int A_7) {
+	GRAPHICS::DRAW_RECT((A_0 + (A_2 * 0.5f)), (A_1 + (A_3 * 0.5f)), A_2, A_3, A_4, A_5, A_6, A_7);
+}
+void draw_menu_line(std::string caption, float lineWidth, float lineHeight, float lineTop, float lineLeft, float textLeft, bool active, bool title, bool rescaleText = true)
+{
+	// default values
+	int text_col[4] = { 255, 255, 255, 255 },
+		rect_col[4] = { 0, 0, 0, 140 };
+	float text_scale = 0.50;
+	int font = 4;
+
+	// correcting values for active line
+	if (active) {
+		text_col[0] = 243;
+		text_col[1] = 23;
+		text_col[2] = 84;
+
+		rect_col[0] = 0;
+		rect_col[1] = 0;
+		rect_col[2] = 0;
+		rect_col[3] = 140;
+
+		if (rescaleText) text_scale = 0.50;
+	}
+
+	if (title) {
+		rect_col[0] = 243;
+		rect_col[1] = 23;
+		rect_col[2] = 84;
+		rect_col[3] = 140;
+
+		if (rescaleText) text_scale = 0.50;
+		font = 1;
+	}
+
+	int screen_w, screen_h;
+	GRAPHICS::GET_SCREEN_RESOLUTION(&screen_w, &screen_h);
+
+	textLeft += lineLeft;
+
+	float lineWidthScaled = lineWidth / (float)screen_w; // line width
+	float lineTopScaled = lineTop / (float)screen_h; // line top offset
+
+	float lineHeightScaled = lineHeight / (float)screen_h; // line height
+	float lineLeftScaled = lineLeft / (float)screen_w;
+
+	float textLeftScaled = textLeft / (float)screen_w; // text left offset
+
+	// this is how it's done in original scripts
+
+	// text upper part
+	UI::SET_TEXT_FONT(font);
+	UI::SET_TEXT_SCALE(0.0, text_scale);
+	UI::SET_TEXT_COLOUR(text_col[0], text_col[1], text_col[2], text_col[3]);
+	UI::SET_TEXT_CENTRE(0);
+	UI::SET_TEXT_DROPSHADOW(0, 0, 0, 0, 0);
+	UI::SET_TEXT_EDGE(0, 0, 0, 0, 0);
+	UI::_SET_TEXT_ENTRY("STRING");
+	UI::_ADD_TEXT_COMPONENT_STRING((LPSTR)caption.c_str());
+	UI::_DRAW_TEXT(textLeftScaled, (((lineTopScaled + 0.00278f) + lineHeightScaled) - 0.005f));
+
+	// text lower part
+	UI::SET_TEXT_FONT(font);
+	UI::SET_TEXT_SCALE(0.0, text_scale);
+	UI::SET_TEXT_COLOUR(text_col[0], text_col[1], text_col[2], text_col[3]);
+	UI::SET_TEXT_CENTRE(0);
+	UI::SET_TEXT_DROPSHADOW(0, 0, 0, 0, 0);
+	UI::SET_TEXT_EDGE(0, 0, 0, 0, 0);
+	UI::_SET_TEXT_GXT_ENTRY("STRING");
+	UI::_ADD_TEXT_COMPONENT_STRING((LPSTR)caption.c_str());
+	int num25 = UI::_0x9040DFB09BE75706(textLeftScaled, (((lineTopScaled + 0.00278f) + lineHeightScaled) - 0.005f));
+
+	// rect
+	draw_rect(lineLeftScaled, lineTopScaled + (0.00278f),
+		lineWidthScaled, ((((float)(num25)* UI::_0xDB88A37483346780(text_scale, 0)) + (lineHeightScaled * 1.5f)) + 0.004f),
+		rect_col[0], rect_col[1], rect_col[2], rect_col[3]);
+}
+void draw_menu_line(std::string caption, int index, float lineHeight, bool active = false) {
+	float defaultSpace = 22;
+	float lineTop;
+	float titleTop = 60;
+
+	if ((lineHeight / 2) == 0) // odd number
+		lineHeight += 1;
+
+	lineTop = titleTop + index * ((lineHeight * 1.5) + defaultSpace);
+	draw_menu_line(caption, 250, lineHeight, lineTop, 1000.0, 7.0, active, false);
+}
+
 std::string line_as_str(std::string text, bool *pState)
 {
 	while (text.size() < 18) text += " ";
 	return text + (pState ? (*pState ? ": ON" : ": OFF") : "");
 }
-
-/*****************************************************
-
-	Code modification by amoshydra
-
-******************************************************/
 
 // Menu: Array of struct containing lines of string.
 struct menuList{
@@ -989,70 +1281,7 @@ struct menuList_strings{
 	char* string2;
 };
 
-// To draw the trainer menu consisting boolean elements
-void menu_list_draw(menuList_boolean menu_lines[], int lineCount, std::string caption, int active_line, DWORD *ptr_waitTime, bool bNavigation = true, float lineHeight = 9.0, float lineWidth = 250) {
-
-	// timed menu draw, used for pause after active line switch
-	DWORD waitTime = *ptr_waitTime;
-	DWORD maxTickCount = GetTickCount() + waitTime;
-
-	do {
-		// Header
-		draw_menu_line(caption, lineWidth, 13.0, 18.0, 1000.0, 3.0, false, true);
-
-		// Menu List
-		for (int i = 0; i < lineCount; i++) {
-			if (i != active_line) {
-				draw_menu_line(line_as_str(menu_lines[i].text, menu_lines[i].pState),
-					lineWidth, lineHeight, 60.0 + i * 36, 1000.0, 7.0, false, false);
-			}
-		}
-
-		// Active Line
-		draw_menu_line(line_as_str(menu_lines[active_line].text, menu_lines[active_line].pState),
-			lineWidth, lineHeight, 60.0 + active_line * 36, 1000.0, 7.0, true, false);
-
-		update_features();
-		WAIT(0);
-	} while (GetTickCount() < maxTickCount);
-
-	// Reset waitTime
-	*ptr_waitTime = 0;
-}
-
-// To draw the trainer menu with string output only
-template <typename T>
-void menu_list_draw(T menu_lines[], int lineCount, std::string caption, int active_line, DWORD *ptr_waitTime, bool bNavigation = true, float lineHeight = 9.0, float lineWidth = 250) {
-
-	// timed menu draw, used for pause after active line switch
-	DWORD waitTime = *ptr_waitTime;
-	DWORD maxTickCount = GetTickCount() + waitTime;
-
-	do {
-		// Header
-		draw_menu_line(caption, lineWidth, 13.0, 18.0, 1000.0, 3.0, false, true);
-
-		// Menu List
-		for (int i = 0; i < lineCount; i++) {
-			if (i != active_line || !bNavigation) {
-				draw_menu_line(menu_lines[i].text, lineWidth, lineHeight, 60.0 + i * 36.0, 1000.0, 7.0, false, false);
-			}
-		}
-
-		// Active Line
-		if (bNavigation)
-			draw_menu_line(menu_lines[active_line].text, lineWidth, lineHeight, 60.0 + active_line * 36, 1000.0, 7.0, true, false);
-
-		update_features();
-		WAIT(0);
-	} while (GetTickCount() < maxTickCount);
-
-	// Reset waitTime
-	*ptr_waitTime = 0;
-}
-
-// Menu navigation with up, down, select and back
-// Back with -1, Select with 1, else 0
+// Menu navigation with up, down, select and back // Back with -1, Select with 1, else 0
 int menu_list_navigate(DWORD *waitTime, int *active_line, const int line_count) {
 	bool bSelect, bBack, bUp, bDown;
 	get_button_state(&bSelect, &bBack, &bUp, &bDown, NULL, NULL);
@@ -1087,8 +1316,74 @@ int menu_list_navigate(DWORD *waitTime, int *active_line, const int line_count) 
 	return 0;
 }
 
-// Menu navigation with back button only.
-// Back with -1, else 0
+// Menu navigation with up, down, left, right, select and back // Back with -1, Select with 1, else 0
+int menu_list_navigate(DWORD *waitTime, int *active_line, int *active_tab, std::vector< std::vector <LPCSTR> > &menu_lines, bool bHasNameVector = false) {
+	bool bSelect, bBack, bUp, bDown, bLeft, bRight;
+	get_button_state(&bSelect, &bBack, &bUp, &bDown, &bLeft, &bRight);
+
+	int line_location = *active_line;
+	int tab_location = *active_tab;
+	int line_count = (int) menu_lines[tab_location].size();;
+	int tab_count = (int) menu_lines.size();
+	int tab_index_offset = 1;
+	int tab_start_index = 0;
+
+	if (bHasNameVector) {
+		tab_index_offset = 2;
+		tab_start_index = 1;
+	}
+
+
+	if (bBack || trainer_switch_pressed()) {
+		play_sound("BACK");
+		return -1;
+	}
+	if (bUp) {
+		play_sound("NAV_UP_DOWN");
+		if (line_location <= 1)
+			line_location = line_count;
+		line_location--;
+		*waitTime = 80;
+	}
+	if (bDown) {
+		play_sound("NAV_UP_DOWN");
+		line_location++;
+		if (line_location >= line_count)
+			line_location = 1;
+		*waitTime = 80;
+	}
+
+	if (bRight)	{
+		play_sound("NAV_LEFT_RIGHT");
+		tab_location += tab_index_offset;
+		if (tab_location >= tab_count)
+			tab_location = tab_start_index;
+		*waitTime = 150;
+	}
+	if (bLeft) {
+		play_sound("NAV_LEFT_RIGHT");
+		if (tab_location <= tab_start_index)
+			tab_location = tab_count + tab_start_index;
+		tab_location -= tab_index_offset;
+		*waitTime = 150;
+	}
+
+	// Correction
+	line_count = (int)menu_lines[tab_location].size();
+	if (line_location >= line_count)
+		line_location = line_count - 1;
+
+	if (bSelect) {
+		play_sound("SELECT");
+		*waitTime = 200;
+		return 1;
+	}
+	*active_line = line_location;
+	*active_tab = tab_location;
+	return 0;
+}
+
+// Menu navigation with back button only. // Back with -1, else 0
 int menu_list_navigate(DWORD *waitTime) {
 	bool bSelect, bBack, bUp, bDown;
 	get_button_state(&bSelect, &bBack, &bUp, &bDown, NULL, NULL);
@@ -1100,6 +1395,177 @@ int menu_list_navigate(DWORD *waitTime) {
 	return 0;
 }
 
+// To draw the trainer menu consisting boolean elements
+void menu_list_draw(menuList_boolean menu_lines[], int lineCount, std::string caption, int active_line, DWORD *ptr_waitTime, float lineHeight = 9.0, float lineWidth = 250) {
+
+	// timed menu draw, used for pause after active line switch
+	DWORD waitTime = *ptr_waitTime;
+	DWORD maxTickCount = GetTickCount() + waitTime;
+
+	do {
+		// Header
+		draw_menu_line(caption, lineWidth, 13.0, 18.0, 1000.0, 3.0, false, true);
+
+		// Menu List
+		for (int i = 0; i < lineCount; i++) {
+			if (i != active_line) {
+				draw_menu_line(line_as_str(menu_lines[i].text, menu_lines[i].pState),
+					i, lineHeight, false);
+			}
+		}
+
+		// Active Line
+		draw_menu_line(line_as_str(menu_lines[active_line].text, menu_lines[active_line].pState),
+			active_line, lineHeight, true);
+
+		update_features();
+		WAIT(0);
+	} while (GetTickCount() < maxTickCount);
+
+	// Reset waitTime
+	*ptr_waitTime = 0;
+}
+
+// To draw the trainer menu with string output only
+template <typename T>
+void menu_list_draw(T menu_lines[], int lineCount, std::string caption, int active_line, DWORD *ptr_waitTime, bool bNavigation = true, float lineHeight = 9.0, float lineWidth = 250) {
+
+	// timed menu draw, used for pause after active line switch
+	DWORD waitTime = *ptr_waitTime;
+	DWORD maxTickCount = GetTickCount() + waitTime;
+	
+	do {
+		// Header
+		draw_menu_line(caption, lineWidth, 13.0, 18.0, 1000.0, 3.0, false, true);
+
+		// Menu List
+		for (int i = 0; i < lineCount; i++) {
+			if (i != active_line || !bNavigation) {
+				draw_menu_line(menu_lines[i].text, i, lineHeight, false);
+			}
+		}
+
+		// Active Line
+		if (bNavigation)
+			draw_menu_line(menu_lines[active_line].text, active_line, lineHeight, true);
+
+		update_features();
+		WAIT(0);
+	} while (GetTickCount() < maxTickCount);
+
+	// Reset waitTime
+	*ptr_waitTime = 0;
+}
+
+// To draw the trainer menu with vector and convey the navigation result. // Back with -1, Select with 1
+int menu_line_process(std::vector< std::vector <LPCSTR> > &menu_lines, int *ptr_active_line, int *ptr_active_tab, DWORD *ptr_waitTime, float lineHeight = 9.0, float lineWidth = 250) {
+
+	// Menu respond setup
+	DWORD waitTime = *ptr_waitTime;
+	DWORD maxTickCount = GetTickCount() + waitTime;
+
+	// Menu initial value
+	int active_line = *ptr_active_line;
+	int active_tab = *ptr_active_tab;
+	int currentListSize;
+	int currentTabSize = (int) menu_lines.size();
+	int navigationResult;
+
+	do {
+		// Print Header
+		draw_menu_line(menu_lines[active_tab][0], 250.0, 13.0, 18.0, 1000.0, 3.0, false, true);
+
+		// Print List
+		currentListSize = (int) menu_lines[active_tab].size();
+		for (int i = 1; i < currentListSize; i++) {
+			if (i != active_line)
+				draw_menu_line(menu_lines[active_tab][i], i-1, lineHeight);
+		}
+
+		// Print cursor
+		draw_menu_line(menu_lines[active_tab][active_line], active_line-1, lineHeight, true);
+
+		update_features();
+		WAIT(0);
+
+	} while (GetTickCount() < maxTickCount);
+
+	// Reset waitTime
+	waitTime = 0;
+	
+	navigationResult = menu_list_navigate(&waitTime, &active_line, &active_tab, menu_lines);
+
+	// Return result
+	*ptr_waitTime = waitTime;
+	*ptr_active_line = active_line;
+	*ptr_active_tab = active_tab;
+	
+	return navigationResult;
+}
+
+// To draw the trainer menu with vector and convey the navigation result. // Back with -1, Select with 1
+int menu_line_process_reflow(std::vector< std::vector <LPCSTR> > &menu_lines, int *ptr_active_line, int *ptr_active_tab, DWORD *ptr_waitTime, float lineHeight = 9.0, float lineWidth = 250) {
+
+	// Menu respond setup
+	DWORD waitTime = *ptr_waitTime;
+	DWORD maxTickCount = GetTickCount() + waitTime;
+
+	// Menu initial value
+	int active_line = *ptr_active_line;
+	int active_tab = *ptr_active_tab;
+	int currentTabSize = (int)menu_lines.size();
+	int navigationResult;
+
+	// Reflow settings
+	int startIndex = 1;
+	int endIndex = 15;
+	int menu_offSet;
+
+	do {
+		if (endIndex >= menu_lines[active_tab].size())
+			endIndex = (int)menu_lines[active_tab].size() - 1;
+
+		if (active_line > endIndex) {
+			menu_offSet = active_line - endIndex;
+			startIndex += menu_offSet;
+			endIndex += menu_offSet;
+		}
+		else if (active_line < startIndex) {
+			menu_offSet = active_line - startIndex;
+			startIndex += menu_offSet;
+			endIndex += menu_offSet;
+		}
+
+		// Print Header
+		draw_menu_line(menu_lines[active_tab][0], 250.0, 13.0, 18.0, 1000.0, 3.0, false, true);
+
+		// Print List
+		for (int i = startIndex; i <= endIndex; i++) {
+			if (i != active_line)
+				draw_menu_line(menu_lines[active_tab][i], i - startIndex, lineHeight);
+		}
+
+		// Print cursor
+		draw_menu_line(menu_lines[active_tab][active_line], active_line - startIndex, lineHeight, true);
+
+		update_features();
+		WAIT(0);
+
+	} while (GetTickCount() < maxTickCount);
+
+	// Reset waitTime
+	waitTime = 0;
+
+	navigationResult = menu_list_navigate(&waitTime, &active_line, &active_tab, menu_lines, true);
+
+	// Return result
+	*ptr_waitTime = waitTime;
+	*ptr_active_line = active_line;
+	*ptr_active_tab = active_tab;
+
+	return navigationResult;
+}
+
 // To update boolean of a menu line
 void menu_list_feature_toggle(menuList_boolean lines[], int active_line) {
 	if (lines[active_line].pState)
@@ -1108,9 +1574,11 @@ void menu_list_feature_toggle(menuList_boolean lines[], int active_line) {
 		*lines[active_line].pUpdated = true;
 }
 
-// Animation Codes
-char AnimDict_LastPlayed[100], AnimID_LastPlayed[70];
 
+//
+// Animation Codes
+//
+char AnimDict_LastPlayed[100], AnimID_LastPlayed[70];
 // Execute an animation given its dictionary name and clip name
 void Animation_Start(char* AnimDict, char* AnimID, bool bHasNext = false, int duration = -1, int lastframe = 9) {
 	//duration set to -1 for infinite loop
@@ -1172,8 +1640,6 @@ void Animation_Stop(Ped playerPed = PLAYER::PLAYER_PED_ID(), char* AnimDict = An
 	Beginning of 
 	menu list in reverse order
 *********************************/
-
-std::string gender = "male";
 
 int active_home_animation_exercises = 0;
 void menu_home_animation_exercises__action(int *ptr_active_line) {
@@ -1504,19 +1970,198 @@ void menu_home_misc_credits__display(std::string caption)
 	}
 }
 
-int active_home_misc_debug = 0;
+// DEBUG START //
+
+float debug_menu_lineWidth = 250.0f;
+float debug_menu_lineHeight = 9.0f;
+float debug_menu_lineTop = 60.0f;
+float debug_menu_lineTopMargin = 36.0f;
+float debug_menu_lineLeft = 1000.0f;
+float debug_menu_textLeft = 7.0f;
+
+int active_home_misc_debug_menu_demo = 0;
+void menu_home_misc_debug_menu_demo__action(menuList menu_lines[], int *ptr_active_line){
+
+	int active_line = *ptr_active_line;
+	display_message_caption("Button pressed");
+	
+}
+void menu_home_misc_debug_menu_demo__display(std::string caption) {
+	// Menu Labels
+	const int LINE_COUNT = 12;
+	menuList menu_home_misc_debug_menu_demo[LINE_COUNT] = {
+		/*  0 */{ " 0" },
+		/*  1 */{ " 1" },
+		/*  2 */{ " 2" },
+		/*  3 */{ " 3" },
+		/*  4 */{ " 4" },
+		/*  5 */{ " 5" },
+		/*  6 */{ " 6" },
+		/*  7 */{ " 7" },
+		/*  8 */{ " 8" },
+		/*  9 */{ " 9" },
+		/* 10 */{ "10" },
+		/* 11 */{ "11" }
+	};
+
+	menuList *current_menu = menu_home_misc_debug_menu_demo;
+	int *current_line = &active_home_misc_debug_menu_demo;
+
+	// Menu Setup and Navigation
+	int navigationResult;
+	DWORD waitTime = 150;
+	while (true) {
+		// draw menu and navigation path MANUAL
+
+		// Adjustable
+		float lineWidth = debug_menu_lineWidth;
+		float lineHeight = debug_menu_lineHeight;
+		float lineTop = debug_menu_lineTop;
+		float lineTopMargin = debug_menu_lineTopMargin;
+		float lineLeft = debug_menu_lineLeft;
+		float textLeft = debug_menu_textLeft;
+
+		// Static
+		int lineCount = LINE_COUNT;
+		int active_line = active_home_misc_debug_menu_demo;
+		bool bNavigation = true;
+		menuList *menu_lines = menu_home_misc_debug_menu_demo;
+
+		//-----------------------------
+		// timed menu draw, used for pause after active line switch
+		DWORD maxTickCount = GetTickCount() + waitTime;
+
+		do {
+			// Header
+			draw_menu_line(caption, lineWidth, 13.0, 18.0, 1000.0, 3.0, false, true);
+
+			// Menu List
+			for (int i = 0; i < lineCount; i++) {
+				if (i != active_line || !bNavigation) {
+					draw_menu_line(menu_lines[i].text, lineWidth, lineHeight, lineTop + i * lineTopMargin, lineLeft, textLeft, false, false);
+				}
+			}
+
+			// Active Line
+			if (bNavigation)
+				draw_menu_line(menu_lines[active_line].text, lineWidth, lineHeight, lineTop + active_line * lineTopMargin, lineLeft, textLeft, true, false);
+
+			update_features();
+			WAIT(0);
+		} while (GetTickCount() < maxTickCount);
+
+		// Reset waitTime
+		waitTime = 0;
+		
+
+		navigationResult = menu_list_navigate(&waitTime, current_line, LINE_COUNT);
+
+		if (navigationResult == -1)
+			break;
+		else if (navigationResult == 1) {
+			menu_home_misc_debug_menu_demo__action(current_menu, current_line);
+		}
+	}
+}
+
+int active_home_misc_debug_menu = 0;
+void menu_home_misc_debug_menu__action(menuList menu_lines[], int *ptr_active_line){
+
+	int active_line = *ptr_active_line;
+
+	// common variable
+	Ped playerPed = PLAYER::PLAYER_PED_ID();
+	std::string status;
+
+	switch (active_line) {
+	case 0:
+		menu_home_misc_debug_menu_demo__display("demo");
+		break;
+	case 1:
+		char ch_lineWidth[15];
+		sprintf(ch_lineWidth, "%f", debug_menu_lineWidth);
+		debug_menu_lineWidth = atof(get_user_input("HUD_TARG", ch_lineWidth));
+		break;
+	case 2:
+		char ch_lineHeight[15];
+		sprintf(ch_lineHeight, "%f", debug_menu_lineHeight);
+		debug_menu_lineHeight = atof(get_user_input("HUD_TARG", ch_lineHeight));
+		break;
+	case 3:
+		char ch_lineTop[15];
+		sprintf(ch_lineTop, "%f", debug_menu_lineTop);
+		debug_menu_lineTop = atof(get_user_input("HUD_TARG", ch_lineTop));
+		break;
+	case 4:
+		char ch_lineTopMargin[15];
+		sprintf(ch_lineTopMargin, "%f", debug_menu_lineTopMargin);
+		debug_menu_lineTopMargin = atof(get_user_input("HUD_TARG", ch_lineTopMargin));
+		break;
+	case 5:
+		char ch_lineLeft[15];
+		sprintf(ch_lineLeft, "%f", debug_menu_lineLeft);
+		debug_menu_lineLeft = atof(get_user_input("HUD_TARG", ch_lineLeft));
+		break;
+	case 6:
+		char ch_textLeft[15];
+		sprintf(ch_textLeft, "%f", debug_menu_textLeft);
+		debug_menu_textLeft = atof(get_user_input("HUD_TARG", ch_textLeft));
+		break;
+	default:
+		debug_menu_lineWidth = 250.0f;
+		debug_menu_lineHeight = 9.0f;
+		debug_menu_lineTop = 60.0f;
+		debug_menu_lineTopMargin = 36.0f;
+		debug_menu_lineLeft = 1000.0f;
+		debug_menu_textLeft = 7.0f;
+	}
+}
+void menu_home_misc_debug_menu__display(std::string caption) {
+	// Menu Labels
+	const int LINE_COUNT = 8;
+	menuList menu_home_misc_debug_menu[LINE_COUNT] = {
+		/*  0 */{ "Draw Menu" },
+		/*  1 */{ "line Width" },
+		/*  2 */{ "line Height" },
+		/*  3 */{ "line Top" },
+		/*  4 */{ "line Top Margin" },
+		/*  5 */{ "line Left" },
+		/*  6 */{ "text Left" },
+		/*  7 */{ "reset value" }
+	};
+
+	menuList *current_menu = menu_home_misc_debug_menu;
+	int *current_line = &active_home_misc_debug_menu;
+
+	// Menu Setup and Navigation
+	int navigationResult;
+	DWORD waitTime = 150;
+	while (true) {
+		// draw menu and navigation path
+		menu_list_draw(current_menu, LINE_COUNT, caption, *current_line, &waitTime);
+		navigationResult = menu_list_navigate(&waitTime, current_line, LINE_COUNT);
+
+		if (navigationResult == -1)
+			break;
+		else if (navigationResult == 1) {
+			menu_home_misc_debug_menu__action(current_menu, current_line);
+		}
+	}
+}
 
 bool debug_collision_control_x = true;
-
 char debug_anim_dictionary[] = "amb@world_human_yoga@female@base";
 char debug_anim_clip[] = "base_b";
 
+int active_home_misc_debug = 0;
 void menu_home_misc_debug__action(menuList_boolean menu_lines[], int *ptr_active_line){
 
 	int active_line = *ptr_active_line;
 
 	// common variable
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
+	Vehicle veh_pre = PED::GET_VEHICLE_PED_IS_USING(playerPed);
+
 	std::string status;
 
 	switch (active_line) {
@@ -1527,28 +2172,37 @@ void menu_home_misc_debug__action(menuList_boolean menu_lines[], int *ptr_active
 				"Player ID: " + std::to_string(PLAYER::PLAYER_PED_ID());
 			break;
 		case 1:
-			status = "Free to ambient: " + std::to_string(PLAYER::IS_PLAYER_FREE_FOR_AMBIENT_TASK(playerPed));
+			status = "ply dead: " + std::to_string(PLAYER::IS_PLAYER_DEAD(PLAYER::PLAYER_ID())) + "\n" +
+				"ped dead: " + std::to_string(PED::_IS_PED_DEAD(playerPed, true)) + "\n" +
+				"ped dead: " + std::to_string(PED::_IS_PED_DEAD(playerPed, false)) + "\n" +
+				"ent dead: " + std::to_string(ENTITY::IS_ENTITY_DEAD(playerPed)) + "\n" +
+				"arrested: " + std::to_string(PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), true)) + "\n" +
+				"arrested: " + std::to_string(PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), false));
 			break;
 		case 2:
 			status = "Is in session: " + std::to_string(NETWORK::NETWORK_IS_IN_SESSION()) + "\n" +
 				"Is activity session: " + std::to_string(NETWORK::NETWORK_IS_ACTIVITY_SESSION());
 			break;
 		case 3:
-			status = "Vehicle ped in: " + std::to_string(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0)) + "\n" +
-				"Vehicle ped using: " + std::to_string(PED::GET_VEHICLE_PED_IS_USING(playerPed)) + "\n" +
-				"Is in any vehicle: " + std::to_string(PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) + "\n" +
-				"Is in vehicle: " + std::to_string(PED::IS_PED_IN_VEHICLE(playerPed, PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 0)) + "\n" +
-				"PED in seat -1: " + std::to_string(PED::IS_PED_SITTING_IN_ANY_VEHICLE(playerPed)) + "\n" +
-				"PED in seat 0: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 0)) + "\n" +
-				"PED in seat 1: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 1)) + "\n" +
-				"PED in seat 2: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 2)) + "\n" +
-				"PED in seat 3: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 3));		
+			status = "Veh ped in: " + std::to_string(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0)) + "\n" +
+				"Veh ped using: " + std::to_string(PED::GET_VEHICLE_PED_IS_USING(playerPed)) + "\n" +
+				"in any veh: " + std::to_string(PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) + "\n" +
+				"in veh: " + std::to_string(PED::IS_PED_IN_VEHICLE(playerPed, PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 0)) + "\n" +
+				"PED seat -1: " + std::to_string(PED::IS_PED_SITTING_IN_ANY_VEHICLE(playerPed)) + "\n" +
+				"PED seat 0: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 0)) + "\n" +
+				"PED seat 1: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 1)) + "\n" +
+				"PED seat 2: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 2)) + "\n" +
+				"PED seat 3: " + std::to_string(VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, 0), 3));		
 			break;
 		case 4:
-			teleport_to_nearest_vehicle();
+			status = "GP Cam: " + std::to_string(CAM::IS_GAMEPLAY_CAM_RENDERING()) + "\n" +
+				"Faded in: " + std::to_string(CAM::IS_SCREEN_FADED_IN()) + "\n" +
+				"Fading in: " + std::to_string(CAM::IS_SCREEN_FADING_IN()) + "\n" +
+				"Faded out: " + std::to_string(CAM::IS_SCREEN_FADED_OUT()) + "\n" +
+				"Fading out: " + std::to_string(CAM::IS_SCREEN_FADING_OUT()) + "\n" +
+				"Aim cam: " + std::to_string(CAM::IS_AIM_CAM_ACTIVE());
 			break;
 		case 5:
-			
 			break;
 		case 6:
 			debug_collision_control_x = !debug_collision_control_x;
@@ -1565,30 +2219,32 @@ void menu_home_misc_debug__action(menuList_boolean menu_lines[], int *ptr_active
 		case 9:
 			ENTITY::STOP_ENTITY_ANIM(playerPed, debug_anim_clip, debug_anim_dictionary, 1);
 			break;
-
 		case 10:
 			strcpy(debug_anim_dictionary, get_user_input("HUD_TARG", debug_anim_dictionary));
 			WAIT(500);
 			strcpy(debug_anim_clip, get_user_input("FMMC_MPM_NA", debug_anim_clip));
 			break;
+		case 11:
+			menu_home_misc_debug_menu__display("Menu Debug");
 	}
 	set_status_text(status, 7000UL);
 }
 void menu_home_misc_debug__display(std::string caption) {
 	// Menu Labels
-	const int LINE_COUNT = 11;
+	const int LINE_COUNT = 12;
 	menuList_boolean menu_home_misc_debug[LINE_COUNT] = {
 		/*  0 */ { "All check", NULL, NULL },
-		/*  1 */ { "Free for ambient", NULL, NULL },
+		/*  1 */ { "Respawn check", NULL, NULL },
 		/*  2 */ { "Online Check", NULL, NULL },
 		/*  3 */ { "Vehicle check", NULL, NULL },
-		/*  4 */ { "Teleport to vehicle", NULL, NULL },
-		/*  5 */ { "NULL", NULL, NULL },
+		/*  4 */ { "Camera check", NULL, NULL },
+		/*  5 */ { "Delete vehicle", NULL, NULL },
 		/*  6 */ { "Toggle collision", &debug_collision_control_x, NULL },
 		/*  7 */ { "Debug animation", NULL, NULL },
 		/*  8 */ { "Play animation", NULL, NULL },
 		/*  9 */ { "Stop animation", NULL, NULL },
-		/* 10 */ { "Input animation", NULL, NULL}
+		/* 10 */ { "Input animation", NULL, NULL},
+		/* 11 */ { "Menu display test", NULL, NULL}
 	};
 
 	menuList_boolean *current_menu = menu_home_misc_debug;
@@ -1610,6 +2266,7 @@ void menu_home_misc_debug__display(std::string caption) {
 	}
 }
 
+// DEBUG END //
 
 int active_home_misc_stats_unlocks = 0;
 void menu_home_misc_stats_unlocks__action(int *ptr_active_line) {
@@ -2073,7 +2730,7 @@ void menu_home_misc_stats_level__action(int *ptr_active_line) {
 		STATS::STAT_SET_INT(GAMEPLAY::GET_HASH_KEY("MP0_CHAR_XP_FM"), rpPoints, true);
 		STATS::STAT_SET_INT(GAMEPLAY::GET_HASH_KEY("MP1_CHAR_XP_FM"), rpPoints, true);
 		STATS::STAT_SET_INT(GAMEPLAY::GET_HASH_KEY("MP2_CHAR_XP_FM"), rpPoints, true);
-		set_status_text("Rank is set");
+		display_message_caption("Rank is set");
 	}
 }
 void menu_home_misc_stats_level__display(std::string caption) {
@@ -2427,114 +3084,30 @@ void menu_home_time__display(std::string caption)
 	}
 }
 
-int active_home_veh_carspawnLine = 0;
-int active_home_veh_carspawnItem = 0;
-void menu_home_veh_carspawn__display() {
+int active_home_vehicle_carspawnLine = 1;
+int active_home_vehicle_carspawnTab = 0;
+void menu_home_vehicle_carspawn__process() {
+	
+	// 2D Vector menu
+	int *current_line = &active_home_vehicle_carspawnLine;
+	int *current_tab = &active_home_vehicle_carspawnTab;
+	int navigationResult;
+
+	// Menu Setup and Navigation
 	DWORD waitTime = 150;
-	const int lineCount = 35;
-	const int itemCount = 10;
-	const int itemCountLastLine = 6;
-	while (true)
-	{
-		// timed menu draw, used for pause after active line switch
-		DWORD maxTickCount = GetTickCount() + waitTime;
-		do
-		{
-			// draw menu
-			char caption[32];
-			sprintf_s(caption, "CAR SPAWNER   %d / %d", active_home_veh_carspawnLine + 1, lineCount);
-			draw_menu_line(caption, 350.0, 15.0, 18.0, 0.0, 5.0, false, true);
-			for (int i = 0; i < itemCount; i++)
-				if (strlen(vehicleModels[active_home_veh_carspawnLine][i]))
-					draw_menu_line(vehicleModels[active_home_veh_carspawnLine][i], 100.0, 5.0, 200.0, 100.0 + i * 110.0, 5.0, i == active_home_veh_carspawnItem, false, false);
-
-			update_features();
-			WAIT(0);
-		} while (GetTickCount() < maxTickCount);
-		waitTime = 0;
-
-		bool bSelect, bBack, bUp, bDown, bLeft, bRight;
-		get_button_state(&bSelect, &bBack, &bUp, &bDown, &bLeft, &bRight);
-
-		if (bSelect)
-		{
-			play_sound("SELECT");
-			LPCSTR modelName = vehicleModels[active_home_veh_carspawnLine][active_home_veh_carspawnItem];
-			DWORD model = GAMEPLAY::GET_HASH_KEY((char *)modelName);
-			if (STREAMING::IS_MODEL_IN_CDIMAGE(model) && STREAMING::IS_MODEL_A_VEHICLE(model))
-			{
-				STREAMING::REQUEST_MODEL(model);
-				while (!STREAMING::HAS_MODEL_LOADED(model)) WAIT(0);
-				Vector3 coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PLAYER::PLAYER_PED_ID(), 0.0, 5.0, 0.0);
-				Vehicle veh = VEHICLE::CREATE_VEHICLE(model, coords.x, coords.y, coords.z, 0.0, 1, 1);
-				VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(veh);
-
-				if (featureVehWrapInSpawned)
-				{
-					ENTITY::SET_ENTITY_HEADING(veh, ENTITY::GET_ENTITY_HEADING(PLAYER::PLAYER_PED_ID()));
-					PED::SET_PED_INTO_VEHICLE(PLAYER::PLAYER_PED_ID(), veh, -1);
-				}
-
-				WAIT(0);
-				STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);
-				ENTITY::SET_VEHICLE_AS_NO_LONGER_NEEDED(&veh);
-
-				char statusText[32];
-				sprintf_s(statusText, "%s spawned", modelName);
-				set_status_text(statusText);
-			}
-		}
-		else
-			if (bBack)
-			{
-				play_sound("BACK");
-				break;
-			}
-			else
-				if (bRight)
-				{
-					play_sound("NAV_LEFT_RIGHT");
-					active_home_veh_carspawnItem++;
-					int itemsMax = (active_home_veh_carspawnLine == (lineCount - 1)) ? itemCountLastLine : itemCount;
-					if (active_home_veh_carspawnItem == itemsMax)
-						active_home_veh_carspawnItem = 0;
-					waitTime = 100;
-				}
-				else
-					if (bLeft)
-					{
-						play_sound("NAV_LEFT_RIGHT");
-						if (active_home_veh_carspawnItem == 0)
-							active_home_veh_carspawnItem = (active_home_veh_carspawnLine == (lineCount - 1)) ? itemCountLastLine : itemCount;
-						active_home_veh_carspawnItem--;
-						waitTime = 100;
-					}
-					else
-						if (bUp)
-						{
-							play_sound("NAV_UP_DOWN");
-							if (active_home_veh_carspawnLine == 0)
-								active_home_veh_carspawnLine = lineCount;
-							active_home_veh_carspawnLine--;
-							waitTime = 200;
-						}
-						else
-							if (bDown)
-							{
-								play_sound("NAV_UP_DOWN");
-								active_home_veh_carspawnLine++;
-								if (active_home_veh_carspawnLine == lineCount)
-									active_home_veh_carspawnLine = 0;
-								waitTime = 200;
-							}
-		if (active_home_veh_carspawnLine == (lineCount - 1))
-			if (active_home_veh_carspawnItem >= itemCountLastLine)
-				active_home_veh_carspawnItem = 0;
+	
+	// draw menu and navigation path
+	while (true) {
+		navigationResult = menu_line_process(vehicleModels, current_line, current_tab, &waitTime, 3.0);
+		if (navigationResult == 1)
+			spawn_vehicle(vehicleModels[*current_tab][*current_line]);
+		else if (navigationResult == -1)
+			break;
 	}
 }
 
-int active_home_veh = 0;
-void menu_home_veh__action(menuList_boolean menu_lines[], int *ptr_active_line) {
+int active_home_vehicle = 0;
+void menu_home_vehicle__action(menuList_boolean menu_lines[], int *ptr_active_line) {
 
 	int active_line = *ptr_active_line;
 
@@ -2545,7 +3118,7 @@ void menu_home_veh__action(menuList_boolean menu_lines[], int *ptr_active_line) 
 
 	switch (active_line) {
 		case 0: //Car Spawner
-			menu_home_veh_carspawn__display();
+			menu_home_vehicle_carspawn__process();
 			break;
 
 		case 1: //Fix
@@ -2627,7 +3200,7 @@ void menu_home_veh__action(menuList_boolean menu_lines[], int *ptr_active_line) 
 						VEHICLE::SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(veh, rand() % 255, rand() % 255, rand() % 255);
 				}
 				else {
-					set_status_text("Player isn't in a vehicle");
+					display_message_caption("Player isn't in a vehicle");
 				}
 			}
 			break;
@@ -2637,10 +3210,10 @@ void menu_home_veh__action(menuList_boolean menu_lines[], int *ptr_active_line) 
 			menu_list_feature_toggle(menu_lines, active_line);
 	}
 }
-void menu_home_veh__display(std::string caption) {
+void menu_home_vehicle__display(std::string caption) {
 	// Menu Labels
 	const int LINE_COUNT = 12;
-	menuList_boolean menu_home_veh[LINE_COUNT] = {
+	menuList_boolean menu_home_vehicle[LINE_COUNT] = {
 		/*  0 */ { "Car Spawner", NULL, NULL },
 		/*  1 */ { "Fix", NULL, NULL },
 		/*  2 */ { "Flip", NULL, NULL },
@@ -2655,8 +3228,8 @@ void menu_home_veh__display(std::string caption) {
 		/* 11 */ { "Slidey Cars", &featureVehSlide, NULL }
 	};
 
-	menuList_boolean *current_menu = menu_home_veh;
-	int *current_line = &active_home_veh;
+	menuList_boolean *current_menu = menu_home_vehicle;
+	int *current_line = &active_home_vehicle;
 
 	// Menu Setup and Navigation
 	int navigationResult;
@@ -2669,7 +3242,7 @@ void menu_home_veh__display(std::string caption) {
 		if (navigationResult == -1)
 			break;
 		else if (navigationResult == 1) {
-			menu_home_veh__action(current_menu, current_line);
+			menu_home_vehicle__action(current_menu, current_line);
 		}
 	}
 }
@@ -2686,24 +3259,24 @@ void  menu_home_weapon__action(menuList_boolean menu_lines[], int *ptr_active_li
 
 	switch (active_line) {
 		case 0:
-			give_weapons_set_to_ped(playerPed, weaponOnlineNames, sizeof(weaponOnlineNames));
-			give_weapons_set_to_ped(playerPed, weaponRestrictedNames, sizeof(weaponRestrictedNames));
+			give_weaponsSets_to_ped(playerPed, weaponOnlineNames_new);
+			give_weaponsSets_to_ped(playerPed, weaponRestrictedNames, sizeof(weaponRestrictedNames));
 			display_message_caption("Added all weapons");
 			break;
 
 		case 1:
-			give_weapons_set_to_ped(playerPed, weaponOnlineNames, sizeof(weaponOnlineNames));
+			give_weaponsSets_to_ped(playerPed, weaponOnlineNames_new);
 			display_message_caption("Added online weapons");
 			break;
 
 		case 2:
-			give_weapons_set_to_ped(playerPed, weaponRestrictedNames, sizeof(weaponRestrictedNames));
+			give_weaponsSets_to_ped(playerPed, weaponRestrictedNames, sizeof(weaponRestrictedNames));
 			display_message_caption("Added restricted weapons");;
 			break;
 
 		case 3:
 			WEAPON::REMOVE_ALL_PED_WEAPONS(playerPed, 1);
-			set_status_text("Removed all weapons");
+			display_message_caption("Removed all weapons");
 			break;
 
 		// switchable features
@@ -2752,7 +3325,6 @@ void  menu_home_teleport__action(menuList_coord menu_lines[], int *ptr_active_li
 	// common variables
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
 	Vector3 coords;
-	Vector3 direction;
 	bool success = false;
 
 	// get entity to teleport
@@ -2803,18 +3375,18 @@ void  menu_home_teleport__action(menuList_coord menu_lines[], int *ptr_active_li
 
 	}
 	else if (active_line == 1) { // move forward
-		coords = ENTITY::GET_ENTITY_COORDS(playerPed, 1);
-		direction = ENTITY::GET_ENTITY_FORWARD_VECTOR(playerPed);
+		float forwardDistance, floatDistance;
+		
 		if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, false)) {
-			coords.x = coords.x + direction.x * 5;
-			coords.y = coords.y + direction.y * 5;
-			coords.z += 0.5;
+			forwardDistance = 6;
+			floatDistance = 0.5;
 		}
 		else {
-			coords.x = coords.x + direction.x * 2.5;
-			coords.y = coords.y + direction.y * 2.5;
-			coords.z += 0.8;
+			forwardDistance = 2.5;
+			floatDistance = 0.8;
 		}
+		coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(playerPed, 0.0, forwardDistance, 0.0);
+		coords.z += floatDistance;
 		success = true;
 	}
 	else { // predefined coords
@@ -2827,8 +3399,6 @@ void  menu_home_teleport__action(menuList_coord menu_lines[], int *ptr_active_li
 	// set player pos
 	if (success) {
 		ENTITY::SET_ENTITY_COORDS_NO_OFFSET(e, coords.x, coords.y, coords.z, 0, 0, 1);
-		WAIT(0);
-		display_message_caption("Teleported");
 	}
 }
 void  menu_home_teleport__display(std::string caption) {
@@ -2863,7 +3433,7 @@ void  menu_home_teleport__display(std::string caption) {
 	DWORD waitTime = 150;
 	while (true) {
 		// draw menu and navigation path
-		menu_list_draw(current_menu, LINE_COUNT, caption, *current_line, &waitTime);
+		menu_list_draw(current_menu, LINE_COUNT, caption, *current_line, &waitTime, true, 4);
 		navigationResult = menu_list_navigate(&waitTime, current_line, LINE_COUNT);
 
 		if (navigationResult == -1)
@@ -2874,6 +3444,7 @@ void  menu_home_teleport__display(std::string caption) {
 	}
 }
 
+/*
 int active_home_player_skinchangerLine = 0;
 int active_home_player_skinchangerItem = 0;
 void  menu_home_player_skinchanger__display() {
@@ -2903,7 +3474,7 @@ void  menu_home_player_skinchanger__display() {
 
 		if (bSelect) {
 			play_sound("SELECT");
-			change_player_model(PLAYER::PLAYER_ID(), 
+			set_player_model(PLAYER::PLAYER_ID(), 
 				GAMEPLAY::GET_HASH_KEY((char *)pedModels[active_home_player_skinchangerLine][active_home_player_skinchangerItem]));
 			waitTime = 200;
 		}
@@ -2945,6 +3516,30 @@ void  menu_home_player_skinchanger__display() {
 		if (active_home_player_skinchangerLine == (lineCount - 1))
 			if (active_home_player_skinchangerItem >= itemCountLastLine)
 				active_home_player_skinchangerItem = 0;
+	}
+}
+*/
+
+int active_home_player_skinChangeLine = 1;
+int active_home_player_skinChangeTab = 1;
+void menu_home_player_skinChange__process() {
+
+	// 2D Vector menu
+	int *ptr_current_line = &active_home_player_skinChangeLine;
+	int *ptr_current_tab = &active_home_player_skinChangeTab;
+	int navigationResult;
+
+	// Menu Setup and Navigation
+	DWORD waitTime = 150;
+
+	// draw menu and navigation path
+	while (true) {
+		navigationResult = menu_line_process_reflow(pedModels_new, ptr_current_line, ptr_current_tab, &waitTime, 3.0);
+		if (navigationResult == 1)
+			set_player_model(PLAYER::PLAYER_PED_ID(), *ptr_current_tab - 1, *ptr_current_line);
+			//set_player_model(PLAYER::PLAYER_PED_ID(), (char *)pedModels_new[*ptr_current_tab - 1][*ptr_current_line]);
+		else if (navigationResult == -1)
+			break;
 	}
 }
 
@@ -3010,7 +3605,7 @@ void  menu_home_player__action(menuList_boolean menu_lines[], int *ptr_active_li
 	
 		// skin changer
 		case 1:
-			menu_home_player_skinchanger__display();
+			menu_home_player_skinChange__process();
 			break;
 
 		// fix player
@@ -3039,7 +3634,9 @@ void  menu_home_player__action(menuList_boolean menu_lines[], int *ptr_active_li
 				Vector3 ENTPOS = ENTITY::GET_ENTITY_COORDS(PLAYER::PLAYER_PED_ID(), 0);
 				static Any prop_bag = GAMEPLAY::GET_HASH_KEY("prop_money_bag_01");
 				STREAMING::REQUEST_MODEL(prop_bag); //Request the shitty Model so that 40k spawns are possible
-				while (!STREAMING::HAS_MODEL_LOADED(prop_bag)) WAIT(0);
+				while (!STREAMING::HAS_MODEL_LOADED(prop_bag))
+					loading_message_show();
+				loading_message_clear();
 				//if (STREAMING::HAS_MODEL_LOADED(prop_bag))
 				//{
 				OBJECT::CREATE_AMBIENT_PICKUP(GAMEPLAY::GET_HASH_KEY("PICKUP_MONEY_CASE"), 
@@ -3127,7 +3724,7 @@ void menu_home__action(int *ptr_active_line) {
 			menu_home_weapon__display("Weapons");
 			break;
 		case 3:
-			menu_home_veh__display("Vehicle Options");
+			menu_home_vehicle__display("Vehicle Options");
 			break;
 		case 4:
 			menu_home_time__display("Time Options");
@@ -3181,25 +3778,7 @@ void menu_home__display(std::string caption) {
 	menu list in reverse order
 *********************************/
 
-void reset_globals()
-{
-	active_home =
-		active_home_player =
-		active_home_player_player2 =
-		active_home_player_skinchangerLine =
-		active_home_player_skinchangerItem =
-		active_home_teleport =
-		active_home_weapon =
-		active_home_veh =
-		active_home_veh_carspawnLine =
-		active_home_time =
-		active_home_weather = 
-		active_home_misc =
-		active_home_misc_stats =
-		active_home_misc_stats_unlocks =
-		active_home_misc_stats_level =
-		active_home_misc_credits =
-		active_home_animation = 0;
+void reset_globals() {
 
 	featurePlayerInvincible =
 		featurePlayerInvincibleUpdated =
@@ -3247,7 +3826,7 @@ void reset_globals()
 
 void main()
 {
-	output_writeToLog("ASI Running");
+	output_writeToLog("ASI Running", false);
 	bypass_online();
 	reset_globals();
 

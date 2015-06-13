@@ -22,3 +22,15 @@ New features
 - Added option to remove all weapons.
 - Added ability to teleport forward.
 - Added log file for debugging.
+
+7:11 AM 14/6/2015
+Bugs fix
+- Dying with a aquatics creature no longer cause spawn loop.
+- Fix respawn screen to work with busted screen
+
+Changes
+- Uses Vector to hold data instead of array
+
+Added
+- Menu with reflow.
+- Gender identifier when using skin spawner.
