@@ -18,6 +18,7 @@
     <ClInclude Include="..\..\inc\enums.h" />
     <ClInclude Include="..\..\inc\natives.h" />
     <ClInclude Include="..\..\inc\types.h" />
+    <ClInclude Include="databases.h" />
     <ClInclude Include="onlinebypass.h" />
     <ClInclude Include="script.h" />
   </ItemGroup>

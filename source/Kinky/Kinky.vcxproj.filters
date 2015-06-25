@@ -18,6 +18,7 @@
     <ClInclude Include="onlinebypass.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="databases.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

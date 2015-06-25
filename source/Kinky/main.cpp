@@ -4,7 +4,8 @@
 			(C) Alexander Blade 2015
 */
 
-#include "..\..\inc\main.h"
+#pragma once
+
 #include "script.h"
 
 BOOL APIENTRY DllMain(HMODULE hInstance, DWORD reason, LPVOID lpReserved)

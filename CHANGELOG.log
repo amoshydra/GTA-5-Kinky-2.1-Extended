@@ -12,25 +12,92 @@ Changes
 - Menu is reorganised.
 - Wrap to newly spawned vehicle is set to be ON by default.
 - Most message is now displayed using native function.
+- Custom License Plate by default is set to "630JK723"
 
 New features
 - Added animations feature. 
 - Retain previously changed skin after dying or arrested.
-- Weapons is given to player whenever skin changer is used.
+- Weapons are given to player whenever skin changer is used.
 - Changing skin in vehicle will keep player stay in the vehicle.
 - Added option to add only weapons available for GTA Online.
 - Added option to remove all weapons.
 - Added ability to teleport forward.
 - Added log file for debugging.
+- Added display_caption_notify and display_message_notify for UI output.
 
 7:11 AM 14/6/2015
 Bugs fix
 - Dying with a aquatics creature no longer cause spawn loop.
 - Fix respawn screen to work with busted screen
+- featureVehWrapInSpawned no longer hurt player in the process.
+- draw_menu_line is now able to calculate different spacing for different line's height and font size.
 
 Changes
 - Uses Vector to hold data instead of array
+- featureVehWrapInSpawned will have the vehicle engine on immediately.
+- featureVehWrapInSpawned will delete vehicle player is using before spawning a new vehicle.
 
 Added
+- Added Ill Gotten Gain vehicle.
+- is_ped_default_player now differentiat between GTA SP and GTA Online.
+- is_ped_animal now return type of animal
 - Menu with reflow.
-- Gender identifier when using skin spawner.
+- Added reflow menu with up down left right navigation.
+- Added name vector for vehicleModels.
+- Added name vector for pedModels_new 
+- Added a 4 way navigation vehicle_carspawn.
+- Added a 4 way navigation skinchanger.
+- set_player_model now check ped type for gender and creature type.
+- Animation now loaded with correct gender type.
+
+2:43 AM 26/6/2015
+Bugs fix
+- Menu with reflow now work correctly.
+- Weapon will not be given to animal ped except for chimp and rhesus as it causes game to freeze
+- Player ped restoration finished before the Wasted / Busted screen fade in.
+- Dying while loading with loading_message_show() will not cause game to freeze. Added update_feature() to it.
+- Parameters for Animation_Start(), duration and lastframe is changed to its appropriate name.
+- Ped randomiser now work correctly to include all valid drawable and texture.
+- featureVehWrapInSpawned correctly transfer previous vehicle's speed.
+- featurePlayerInvincible now work as toggled instead of constant loop activation.
+- featurePlayerNeverWanted now work as toggled instead of constant loop of clearing wanted level.
+
+Changes
+- Menu header is changed for pink to blue.
+- All vector databases are moved to databases.h.
+- Aquatics animal will not be spawn on land.
+- bMonitorPlayerRespawn will be set everytime set_player_model is used.
+- bMonitorPlayerRespawn is set once the ASI is loaded.
+- Blip teleportation uses calculation to get groundCheck interval instead of a stored array.
+- Blip teleportation check for ground from top down instead of bottom up.
+- Blip teleportation now check for water level and will set player to water surface if teleported to sea / lake.
+- Blip teleportation, if failed to get z-axis will let system to respawn you automatically by setting z to -1000.
+- Blip teleportation no longer give player parachute when failed to get z-axis.
+- display_caption_notify now receive std::string input.
+- set_player_model now check if the model it set has already been set. It will not set the model again and will randomise ped components instead.
+- set_player_model is now able to differentiate ig, cs, csb ped model's gender with PED::CHECK_PED_TYPE.
+- give_weaponSets_to_ped now uses GIVE_WEAPON_TO_PED instead of GIVE_DELAYED_WEAPON_TO_PED.
+- give_weaponSets_to_ped will always disarm player.
+- More menu__display function now take in vector instead of array so that arraySize do not need to be maintained.
+- Split Player Options into Player Options and Gameplay Options.
+- Reordered Animation Option into Player Options
+- Merged fix player and clean player option together
+
+Added
+- Added online player menu.
+- Added function to set blip to specific player's coordinate.
+- Added new DLC ped and creatures.
+- Added more teleportation location.
+- Added a 4 way navigation teleport.
+- Script can now get inputs settings from config file.
+- Blip teleportation check for ground at different level based on different y-axis on the map. Lower z-axis check for city area.
+- Added IPL Loader, removal, restoring and checking.
+- Added option to change player's ped into nearby ped.
+- Added function to detect nearby ped.
+- Added Speech menu to Player Options.
+- Ped components are now properly restored when ped is wasted or busted.
+- Added Ped Component Changer to Player Options.
+- More animation is added.
+- Added exit animation for some animation.
+- Ability to cancel a loading to prevent infinite loading.
+- Ped conponent randomiser now include prop randomiser.
